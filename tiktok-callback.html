@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Conectando TikTok · Artist Vault</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#030308;font-family:'Segoe UI',sans-serif;color:#E0E0F0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+    .card{background:#0D0D1A;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:36px 28px;text-align:center;max-width:360px;width:100%;}
+    .icon{font-size:48px;margin-bottom:16px;}
+    h1{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;}
+    p{font-size:13px;color:#4A4A6A;line-height:1.6;margin-bottom:20px;}
+    .status{font-family:'Courier New',monospace;font-size:11px;padding:10px 14px;border-radius:8px;margin-bottom:16px;}
+    .status.loading{background:rgba(124,58,255,.1);border:1px solid rgba(124,58,255,.2);color:#7C3AFF;}
+    .status.success{background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.2);color:#00F5A0;}
+    .status.error{background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.2);color:#FF2D78;}
+    .btn{display:inline-block;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,#7C3AFF,#FF2D78);color:#fff;text-decoration:none;}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" id="icon">⏳</div>
+  <h1 id="title">Conectando con TikTok...</h1>
+  <div class="status loading" id="status">Procesando autorización</div>
+  <p id="desc">Espera un momento mientras verificamos tu cuenta de TikTok.</p>
+  <div id="action" style="display:none;">
+    <a href="https://t.me/ArtistVaultBot" class="btn">Volver al bot</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const code  = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+
+  const icon   = document.getElementById('icon');
+  const title  = document.getElementById('title');
+  const status = document.getElementById('status');
+  const desc   = document.getElementById('desc');
+  const action = document.getElementById('action');
+
+  function showError(msg){
+    icon.textContent = '❌';
+    title.textContent = 'Error de conexión';
+    status.className = 'status error';
+    status.textContent = msg;
+    desc.textContent = 'Vuelve al bot e intenta conectar TikTok de nuevo.';
+    action.style.display = 'block';
+  }
+
+  function showSuccess(){
+    icon.textContent = '✅';
+    title.textContent = '¡TikTok conectado!';
+    status.className = 'status success';
+    status.textContent = 'Cuenta verificada correctamente';
+    desc.textContent = 'Puedes cerrar esta ventana y volver al bot. Tus estadísticas de TikTok ya están disponibles.';
+    action.style.display = 'block';
+  }
+
+  if(error){
+    showError('Autorización denegada: ' + error);
+    return;
+  }
+
+  if(!code){
+    showError('No se recibió código de autorización.');
+    return;
+  }
+
+  // Send code to Railway backend
+  fetch('https://web-production-b6d3a.up.railway.app/tiktok/callback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, state })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if(data.ok) showSuccess();
+    else showError(data.error || 'Error del servidor.');
+  })
+  .catch(() => showError('No se pudo conectar con el servidor.'));
+})();
+</script>
+</body>
+</html>

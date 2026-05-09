@@ -1,15 +1,16 @@
 import os
-import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, MenuButtonWebApp
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-from flask import Flask, request, jsonify
-import threading
+import json
 import sqlite3
+import logging
+import threading
+import requests
+from flask import Flask, request, jsonify
 
 # ─── CONFIG ────────────────────────────────────────────────
 BOT_TOKEN  = os.environ.get("BOT_TOKEN", "")
-WEBAPP_URL = os.environ.get("WEBAPP_URL", "")   # URL de GitHub Pages
-PORT       = int(os.environ.get("PORT", 5000))
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "")
+PORT       = int(os.environ.get("PORT", 8080))
+API        = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ def get_or_create_user(user_id, username, first_name):
     if not row:
         cur.execute(
             "INSERT INTO users (user_id, username, first_name) VALUES (?, ?, ?)",
-            (user_id, username, first_name)
+            (user_id, username or "", first_name or "")
         )
         conn.commit()
         is_pro = False
@@ -46,61 +47,62 @@ def get_or_create_user(user_id, username, first_name):
     conn.close()
     return is_pro
 
-def set_pro(user_id: int, value: bool):
+def set_pro(user_id, value):
     conn = sqlite3.connect("users.db")
     conn.execute("UPDATE users SET is_pro = ? WHERE user_id = ?", (int(value), user_id))
     conn.commit()
     conn.close()
 
-# ─── BOT HANDLERS ──────────────────────────────────────────
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user   = update.effective_user
-    is_pro = get_or_create_user(user.id, user.username or "", user.first_name or "")
+# ─── TELEGRAM API HELPERS ──────────────────────────────────
+def send_message(chat_id, text, reply_markup=None):
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup)
+    requests.post(f"{API}/sendMessage", json=payload)
 
-    plan_text = "⭐ *PRO ACTIVO*" if is_pro else "Plan Free — 5 herramientas disponibles"
+def webapp_button():
+    return {"inline_keyboard": [[{"text": "🎛️ Abrir Artist Vault", "web_app": {"url": WEBAPP_URL}}]]}
 
-    keyboard = [[
-        InlineKeyboardButton(
-            "🎛️ Abrir Artist Vault",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )
-    ]]
+def set_menu_button():
+    payload = {"menu_button": {"type": "web_app", "text": "🎛️ Artist Vault", "web_app": {"url": WEBAPP_URL}}}
+    r = requests.post(f"{API}/setChatMenuButton", json=payload)
+    log.info(f"Menu button: {r.json()}")
 
-    await update.message.reply_text(
-        f"⚡ *ARTIST VAULT*\n"
-        f"Herramientas de industria sin filtros.\n\n"
-        f"{plan_text}",
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+# ─── HANDLERS ──────────────────────────────────────────────
+def handle_start(chat_id, user):
+    is_pro = get_or_create_user(user.get("id"), user.get("username"), user.get("first_name"))
+    plan = "⭐ *PRO ACTIVO*" if is_pro else "Plan Free — 5 herramientas disponibles"
+    send_message(chat_id, f"⚡ *ARTIST VAULT*\nHerramientas de industria sin filtros.\n\n{plan}", reply_markup=webapp_button())
 
-async def setup_menu_button(application):
-    """Configura el botón de menú persistente al iniciar el bot."""
-    await application.bot.set_chat_menu_button(
-        menu_button=MenuButtonWebApp(
-            text="🎛️ Artist Vault",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )
-    )
-    log.info("Menu button configurado correctamente.")
+def handle_message(chat_id):
+    send_message(chat_id, "Toca el botón para abrir la plataforma 👇", reply_markup=webapp_button())
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Responde a cualquier mensaje con el botón directo."""
-    user   = update.effective_user
-    is_pro = get_or_create_user(user.id, user.username or "", user.first_name or "")
+# ─── POLLING LOOP ──────────────────────────────────────────
+def poll():
+    requests.post(f"{API}/deleteWebhook", json={"drop_pending_updates": True})
+    offset = None
+    log.info("Bot iniciado con polling.")
+    while True:
+        try:
+            params = {"timeout": 30, "allowed_updates": ["message"]}
+            if offset:
+                params["offset"] = offset
+            r = requests.get(f"{API}/getUpdates", params=params, timeout=35)
+            for update in r.json().get("result", []):
+                offset = update["update_id"] + 1
+                msg = update.get("message")
+                if not msg:
+                    continue
+                chat_id = msg["chat"]["id"]
+                text    = msg.get("text", "")
+                if text.startswith("/start"):
+                    handle_start(chat_id, msg.get("from", {}))
+                else:
+                    handle_message(chat_id)
+        except Exception as e:
+            log.error(f"Polling error: {e}")
 
-    keyboard = [[
-        InlineKeyboardButton(
-            "🎛️ Abrir Artist Vault",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )
-    ]]
-    await update.message.reply_text(
-        "Toca el botón para abrir la plataforma 👇",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-# ─── FLASK API (para el Mini App) ─────────────────────────
+# ─── FLASK API ─────────────────────────────────────────────
 flask_app = Flask(__name__)
 
 @flask_app.route("/check_plan")
@@ -117,14 +119,10 @@ def check_plan():
 
 @flask_app.route("/activate_pro", methods=["POST"])
 def activate_pro():
-    """
-    Llamado desde tu sistema de pagos (Stripe, Stars, etc.)
-    Body: { "user_id": 123456789 }
-    """
     data    = request.get_json()
     user_id = data.get("user_id")
     if not user_id:
-        return jsonify({"ok": False, "error": "user_id requerido"}), 400
+        return jsonify({"ok": False}), 400
     set_pro(user_id, True)
     return jsonify({"ok": True, "user_id": user_id, "is_pro": True})
 
@@ -132,29 +130,10 @@ def activate_pro():
 def health():
     return jsonify({"status": "ok"})
 
-def run_flask():
-    flask_app.run(host="0.0.0.0", port=PORT)
-
 # ─── MAIN ──────────────────────────────────────────────────
-def main():
-    init_db()
-
-    # Flask en hilo separado
-    threading.Thread(target=run_flask, daemon=True).start()
-    log.info(f"Flask corriendo en puerto {PORT}")
-
-    # Bot
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .post_init(setup_menu_button)
-        .build()
-    )
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    log.info("Bot iniciado.")
-    app.run_polling(drop_pending_updates=True)
-
 if __name__ == "__main__":
-    main()
+    init_db()
+    set_menu_button()
+    threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=PORT), daemon=True).start()
+    log.info(f"Flask corriendo en puerto {PORT}")
+    poll()

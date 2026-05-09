@@ -282,9 +282,44 @@
   }
 
   function renderSongBar(){
-    document.getElementById('songBar').innerHTML=
-      songs.map((s,i)=>`<div class="song-pill ${i===actSong?'active':''}" onclick="selSong(${i})"><div class="sname">${esc(s.name)}</div><div class="sdate">${s.date?fmtDate(s.date):'SIN FECHA'}</div></div>`).join('')+
-      `<div id="addPill" onclick="openModal('song')">+ Nuevo lanzamiento</div>`;
+    const bar = document.getElementById('songBar');
+    bar.innerHTML = '';
+    songs.forEach(function(s, i){
+      const pill = document.createElement('div');
+      pill.className = 'song-pill' + (i === actSong ? ' active' : '');
+      pill.style.cssText = 'position:relative;flex-shrink:0;cursor:pointer;';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'sname';
+      nameEl.textContent = s.name;
+      pill.appendChild(nameEl);
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'sdate';
+      dateEl.textContent = s.date ? fmtDate(s.date) : 'SIN FECHA';
+      pill.appendChild(dateEl);
+
+      pill.addEventListener('click', function(){ selSong(i); });
+
+      if(i === actSong){
+        const xBtn = document.createElement('div');
+        xBtn.textContent = '✕';
+        xBtn.style.cssText = 'position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#FF2D78;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;';
+        xBtn.addEventListener('click', function(e){
+          e.stopPropagation();
+          delSong(i);
+        });
+        pill.appendChild(xBtn);
+      }
+      bar.appendChild(pill);
+    });
+
+    const addBtn = document.createElement('div');
+    addBtn.id = 'addPill';
+    addBtn.textContent = '+ Nuevo lanzamiento';
+    addBtn.style.cssText = 'flex-shrink:0;padding:7px 14px;background:transparent;border:1px dashed rgba(0,245,160,.3);border-radius:20px;cursor:pointer;font-family:Space Mono,monospace;font-size:10px;color:var(--mint);display:flex;align-items:center;gap:5px;';
+    addBtn.addEventListener('click', function(){ openModal('song'); });
+    bar.appendChild(addBtn);
   }
 
   function renderTimeline(){
@@ -329,6 +364,40 @@
 
   function renderSemana(el){
     const s=songs[actSong];
+    const today=new Date().toISOString().split('T')[0];
+    // Pre-launch state: today is before launch date
+    if(s.date && today < s.date){
+      const launch=new Date(s.date+'T00:00:00');
+      const now=new Date(today+'T00:00:00');
+      const daysLeft=Math.round((launch-now)/(1000*60*60*24));
+      document.getElementById('hdrDate').textContent='PRE-LANZAMIENTO';
+      el.innerHTML=`
+        <div style="text-align:center;padding:24px 0 16px;">
+          <div style="font-size:48px;font-weight:800;color:#fff;line-height:1;letter-spacing:-.03em;opacity:.15;">D-${daysLeft}</div>
+          <div style="font-size:20px;font-weight:800;color:#fff;margin:-12px 0 6px;">${daysLeft===1?'Mañana es el día':'Faltan '+daysLeft+' días'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);">LANZAMIENTO · ${fmtDate(s.date)}</div>
+        </div>
+        <div style="background:rgba(0,245,160,.04);border:1px solid rgba(0,245,160,.15);border-radius:14px;padding:16px;margin-bottom:10px;">
+          <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--mint);letter-spacing:.2em;margin-bottom:12px;">◈ CHECKLIST PRE-LANZAMIENTO</div>
+          ${[
+            ['🎵','¿Está el tema aprobado en DistroKid/distribuidor?'],
+            ['🔗','¿Tienes el link de Spotify listo para mañana?'],
+            ['🖼️','¿Portada en alta resolución lista para stories?'],
+            ['📝','¿Captions del día de lanzamiento redactados?'],
+            ['🎬','¿Video de TikTok del hook editado y guardado?'],
+            ['📢','¿Avisaste a tu círculo cercano para el día 0?'],
+          ].map(([ic,txt])=>`
+            <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;">
+              <span style="font-size:16px;flex-shrink:0">${ic}</span>
+              <span style="font-size:12px;color:var(--muted);line-height:1.5;">${txt}</span>
+            </div>`).join('')}
+        </div>
+        <div style="text-align:center;margin-top:8px;">
+          <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:12px;">Tu plan de 7 días arranca mañana.</div>
+          <button class="btn bghost bsm" onclick="selDay(0)">Ver plan del día 0 →</button>
+        </div>`;
+      return;
+    }
     const dayTpl=TMPL[actDay];
     const dt=tasks.filter(t=>t.si===actSong&&t.day===actDay);
     const ds=addDays(s.date,actDay);
@@ -393,11 +462,26 @@
 
   window.toggleT=id=>{const t=tasks.find(t=>t.id===id);if(t){t.done=!t.done;save();renderProgress();renderTimeline();renderMain();}};
   window.delT=id=>{tasks=tasks.filter(t=>t.id!==id);save();renderMain();};
+  window.delSong=i=>{
+    const doDelete = () => {
+      tasks = tasks.filter(t => t.si !== i);
+      tasks.forEach(t => { if(t.si > i) t.si--; });
+      songs.splice(i, 1);
+      actSong = Math.max(0, Math.min(actSong, songs.length-1));
+      actDay = 0;
+      save(); renderAll();
+    };
+    if(tg && tg.showConfirm) {
+      tg.showConfirm('¿Eliminar este lanzamiento y todas sus tareas?', ok => { if(ok) doDelete(); });
+    } else {
+      if(confirm('¿Eliminar este lanzamiento y todas sus tareas?')) doDelete();
+    }
+  };
   window.copyC=id=>{
     const t=tasks.find(t=>t.id===id);if(!t?.caption)return;
     navigator.clipboard?.writeText(t.caption).then(()=>toast('✅ Caption copiado')).catch(()=>toast(t.caption));
   };
-  window.selSong=i=>{actSong=i;actDay=0;const s=songs[i];const today=new Date().toISOString().split('T')[0];if(s?.date){for(let d=0;d<7;d++){if(addDays(s.date,d)===today){actDay=d;break;}}}renderAll();};
+  window.selSong=i=>{actSong=i;actDay=0;const s=songs[i];const today=new Date().toISOString().split('T')[0];if(s?.date&&today>=s.date){for(let d=0;d<7;d++){if(addDays(s.date,d)===today){actDay=d;break;}}}renderAll();};
   window.selDay=d=>{actDay=d;renderTimeline();renderSemana(document.getElementById('main'));};
   window.switchTab=tab=>{actTab=tab;document.querySelectorAll('.ntab').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));renderMain();};
   window.genAndRender=()=>{genWeek(actSong);renderAll();};

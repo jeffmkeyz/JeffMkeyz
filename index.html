@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --mint:   #00F5A0;
+      --pink:   #FF2D78;
+      --purple: #7C3AFF;
+      --gold:   #FFB830;
+      --bg:     #030308;
+      --s:      #0D0D1A;
+      --s2:     #12121F;
+      --border: rgba(255,255,255,0.05);
+      --muted:  #4A4A6A;
+      --dim:    #333355;
+    }
+    html, body {
+      background: var(--bg);
+      min-height: 100%;
+      overflow-x: hidden;
+      font-family: 'Syne', sans-serif;
+      color: #E0E0F0;
+    }
+    ::-webkit-scrollbar { width: 0; }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative;
+      height: 240px;
+      overflow: hidden;
+      border-radius: 0 0 28px 28px;
+    }
+    #shaderCanvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    #heroOverlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(3,3,8,.96) 0%, rgba(3,3,8,.25) 65%, transparent 100%);
+    }
+    #heroTop {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 20px;
+    }
+    #heroLabel {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: .3em; color: rgba(255,255,255,.45);
+    }
+    #proBadge {
+      display: none;
+      align-items: center; gap: 5px;
+      font-family: 'Space Mono', monospace; font-size: 9px;
+      color: var(--gold); border: 1px solid rgba(255,184,48,.3);
+      padding: 4px 10px; border-radius: 20px;
+    }
+    #proBadge.visible { display: flex; }
+    #upgradeTopBtn {
+      font-family: 'Space Mono', monospace; font-size: 9px;
+      letter-spacing: .1em; font-weight: 700;
+      color: #000; background: var(--mint);
+      border: none; border-radius: 20px;
+      padding: 5px 12px; cursor: pointer;
+    }
+    #heroBottom {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 0 20px 18px;
+    }
+    #heroSub {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: .28em;
+      color: var(--mint); margin-bottom: 5px;
+    }
+    #heroTitle {
+      font-size: 30px; font-weight: 800;
+      line-height: 1.05; letter-spacing: -.025em;
+      color: #fff; margin-bottom: 12px;
+    }
+    #heroTitle span { color: var(--mint); }
+    #waveCanvas { width: 100%; height: 34px; display: block; }
+
+    /* ── USER BAR ── */
+    #userBar {
+      margin: 14px 20px 0;
+      padding: 12px 14px;
+      background: var(--s);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #userLeft { display: flex; gap: 10px; align-items: center; }
+    #avatarCanvas { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.1); flex-shrink: 0; }
+    #userName { font-size: 13px; font-weight: 700; color: #fff; }
+    #userPlan { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--dim); letter-spacing: .1em; margin-top: 2px; }
+    #statsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-chip { padding: 6px 10px; border-radius: 8px; text-align: center; }
+    .stat-chip.free { background: rgba(0,245,160,.07); }
+    .stat-chip.pro  { background: rgba(255,184,48,.07); }
+    .stat-num { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; line-height: 1; }
+    .stat-num.mint { color: var(--mint); }
+    .stat-num.gold { color: var(--gold); }
+    .stat-lbl { font-size: 7px; color: var(--dim); letter-spacing: .08em; margin-top: 2px; }
+
+    /* ── SECTION LABEL ── */
+    .section-row {
+      margin: 18px 20px 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: .22em; white-space: nowrap;
+    }
+    .section-text.free { color: var(--dim); }
+    .section-text.pro  { color: var(--gold); }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .section-count { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--dim); }
+
+    /* ── CATEGORY TABS ── */
+    #catBar {
+      padding: 14px 20px 0;
+      display: flex; gap: 7px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    #catBar::-webkit-scrollbar { display: none; }
+    .cat-btn {
+      padding: 7px 14px; border-radius: 20px; flex-shrink: 0;
+      font-family: 'Space Mono', monospace; font-size: 9px;
+      font-weight: 700; letter-spacing: .12em;
+      border: 1px solid var(--border);
+      background: var(--s); color: var(--muted);
+      cursor: pointer; transition: all .2s;
+    }
+    .cat-btn.active {
+      background: rgba(0,245,160,.1);
+      border-color: rgba(0,245,160,.35);
+      color: var(--mint);
+    }
+
+    /* ── TOOLS GRID ── */
+    .tools-grid {
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ── TOOL CARD ── */
+    .tool-card {
+      border-radius: 16px; padding: 14px 12px 12px;
+      cursor: pointer; position: relative; overflow: hidden;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 148px;
+      transition: transform .15s, opacity .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tool-card:active { transform: scale(.96); }
+    .tool-card.free {
+      background: var(--s);
+      border: 1px solid var(--border);
+    }
+    .tool-card.pro {
+      background: linear-gradient(145deg, #0E0E1C, #141428);
+      border: 1px solid rgba(124,58,255,.3);
+      box-shadow: 0 0 20px rgba(124,58,255,.07);
+    }
+    .tool-card.locked { opacity: .72; }
+    .card-glow {
+      position: absolute; inset: 0; border-radius: 15px;
+      background: linear-gradient(135deg, rgba(124,58,255,.07), rgba(255,45,120,.05), rgba(255,184,48,.03));
+      pointer-events: none;
+    }
+    .card-top { display: flex; justify-content: space-between; align-items: center; }
+    .card-icon { font-size: 22px; line-height: 1; }
+    .card-icon.free { color: var(--mint); }
+    .card-icon.pro  { color: var(--gold); }
+    .card-badge {
+      font-family: 'Space Mono', monospace; font-size: 7px;
+      font-weight: 700; letter-spacing: .14em;
+      padding: 3px 7px; border-radius: 4px;
+    }
+    .card-badge.free { color: var(--mint); background: rgba(0,245,160,.1); border: 1px solid rgba(0,245,160,.22); }
+    .card-badge.pro  { color: var(--gold); background: rgba(255,184,48,.1); border: 1px solid rgba(255,184,48,.22); }
+    .card-name { font-size: 12px; font-weight: 700; color: #fff; line-height: 1.3; letter-spacing: -.01em; }
+    .card-desc { font-size: 10px; color: var(--muted); line-height: 1.6; flex: 1; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+    .card-cat { font-family: 'Space Mono', monospace; font-size: 7px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+    .card-action { font-family: 'Space Mono', monospace; font-size: 9px; font-weight: 700; }
+    .card-action.open { color: var(--mint); }
+    .card-action.open.pro { color: var(--gold); }
+    .card-action.lock { color: var(--gold); font-size: 8px; }
+
+    /* ── UPGRADE BANNER ── */
+    #upgradeBanner {
+      margin: 16px 20px 0;
+      padding: 16px 14px;
+      background: linear-gradient(135deg, rgba(124,58,255,.1), rgba(255,45,120,.07));
+      border: 1px solid rgba(124,58,255,.2);
+      border-radius: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer;
+    }
+    #upgradeBanner.hidden { display: none; }
+    #upgradeBanner h3 { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+    #upgradeBanner p  { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
+    #upgradeBanner span { font-size: 20px; color: var(--purple); }
+
+    /* ── MODAL ── */
+    #modalOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(4px);
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    #modalOverlay.open { display: flex; }
+    #modal {
+      width: 100%; max-width: 430px;
+      background: var(--s);
+      border-radius: 24px 24px 0 0;
+      border: 1px solid rgba(255,255,255,.07);
+      padding: 28px 24px 44px;
+      animation: slideUp .35s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    #modalHandle { width: 36px; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; margin: 0 auto 24px; }
+    #modalTag { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: .25em; color: var(--gold); margin-bottom: 10px; }
+    #modalTitle { font-size: 22px; font-weight: 800; color: #fff; line-height: 1.2; margin-bottom: 8px; letter-spacing: -.02em; }
+    #modalDesc { font-size: 11px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+    .modal-feature { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .modal-feature-icon { font-size: 14px; color: var(--gold); width: 18px; text-align: center; flex-shrink: 0; }
+    .modal-feature-text { font-size: 11px; color: #8080A0; }
+    #modalActions { margin-top: 24px; display: grid; gap: 8px; }
+    #confirmBtn {
+      padding: 15px 0; border-radius: 14px; border: none;
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      font-family: 'Space Mono', monospace; font-size: 13px;
+      font-weight: 700; letter-spacing: .08em;
+      color: #fff; cursor: pointer;
+    }
+    #cancelBtn {
+      padding: 13px 0; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.07); background: transparent;
+      font-family: 'Space Mono', monospace; font-size: 11px;
+      color: var(--muted); cursor: pointer;
+    }
+
+    /* ── SPACER ── */
+    #spacer { height: 40px; }
+
+    /* ── FADE IN ── */
+    .fade { opacity: 0; transform: translateY(18px); transition: opacity .5s, transform .5s; }
+    .fade.in { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div id="hero">
+  <canvas id="shaderCanvas"></canvas>
+  <div id="heroOverlay"></div>
+  <div id="heroTop">
+    <div id="heroLabel">ARTIST VAULT</div>
+    <div id="heroBtns">
+      <div id="proBadge">
+        <div style="width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold);animation:pulse 2s infinite"></div>
+        PRO ACTIVO
+      </div>
+      <button id="upgradeTopBtn" onclick="openModal()">↑ PRO</button>
+    </div>
+  </div>
+  <div id="heroBottom">
+    <div id="heroSub">// INDUSTRIA SIN FILTROS</div>
+    <div id="heroTitle"><span id="glitchText">ARTIST</span> <span>OS</span></div>
+    <canvas id="waveCanvas" height="34"></canvas>
+  </div>
+</div>
+
+<!-- USER BAR -->
+<div id="userBar" class="fade">
+  <div id="userLeft">
+    <canvas id="avatarCanvas" width="36" height="36"></canvas>
+    <div>
+      <div id="userName">Cargando...</div>
+      <div id="userPlan">PLAN FREE</div>
+    </div>
+  </div>
+  <div id="statsGrid">
+    <div class="stat-chip free">
+      <div class="stat-num mint" id="freeCount">5</div>
+      <div class="stat-lbl">FREE</div>
+    </div>
+    <div class="stat-chip pro">
+      <div class="stat-num gold" id="proCount">7</div>
+      <div class="stat-lbl">PRO</div>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY TABS -->
+<div id="catBar" class="fade">
+  <button class="cat-btn active" data-cat="all">TODO</button>
+  <button class="cat-btn" data-cat="analisis">ANÁLISIS</button>
+  <button class="cat-btn" data-cat="distribucion">DISTRIBUCIÓN</button>
+  <button class="cat-btn" data-cat="marketing">MARKETING</button>
+</div>
+
+<!-- FREE SECTION -->
+<div class="section-row fade" id="secFree">
+  <span class="section-text free">ACCESO LIBRE</span>
+  <div class="section-line"></div>
+  <span class="section-count" id="freeLabel">5</span>
+</div>
+<div class="tools-grid" id="freeGrid"></div>
+
+<!-- PRO SECTION -->
+<div class="section-row fade" id="secPro">
+  <span class="section-text pro">STUDIO PRO</span>
+  <div class="section-line"></div>
+  <span class="section-count" id="proLabel">7</span>
+</div>
+<div class="tools-grid" id="proGrid"></div>
+
+<!-- UPGRADE BANNER -->
+<div id="upgradeBanner" onclick="openModal()">
+  <div>
+    <h3>Desbloquea las 7 herramientas Pro</h3>
+    <p>Data que la industria no quiere que sepas</p>
+  </div>
+  <span>→</span>
+</div>
+
+<div id="spacer"></div>
+
+<!-- MODAL -->
+<div id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div id="modal">
+    <div id="modalHandle"></div>
+    <div id="modalTag">◈ ARTIST VAULT PRO</div>
+    <div id="modalTitle">Acceso completo.<br/>Sin filtros.</div>
+    <div id="modalDesc">7 herramientas exclusivas con data que el 90% de la industria no conoce.</div>
+    <div id="modalFeatures">
+      <div class="modal-feature"><div class="modal-feature-icon">⟁</div><div class="modal-feature-text">Royalty Calculator — plataformas reales</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">⬡</div><div class="modal-feature-text">Playlist Pitch Engine — Spotify & Apple</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">◉</div><div class="modal-feature-text">Market Intelligence — data exclusiva</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">⬢</div><div class="modal-feature-text">Label Deal Analyzer — contratos</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">⟴</div><div class="modal-feature-text">Sync Licensing Hub — cine y TV</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">⟐</div><div class="modal-feature-text">Content Calendar — por género</div></div>
+      <div class="modal-feature"><div class="modal-feature-icon">⬟</div><div class="modal-feature-text">Viral Hook Lab — TikTok & Reels</div></div>
+    </div>
+    <div id="modalActions">
+      <button id="confirmBtn" onclick="activatePro()">ACTIVAR PRO — 5,000 ⭐</button>
+      <button id="cancelBtn" onclick="closeModal()">SEGUIR EN FREE</button>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}</style>
+
+<script>
+// ─── TOOLS DATA ────────────────────────────────────────────
+const TOOLS = [
+  { id:1,  tier:"free", cat:"analisis",     icon:"◈", name:"BPM & Key Detector",    desc:"Tempo y tonalidad de cualquier track al instante.",          url:"#" },
+  { id:2,  tier:"free", cat:"distribucion", icon:"⊕", name:"Release Checklist",     desc:"Todo lo que necesitas antes de distribuir.",                 url:"#" },
+  { id:3,  tier:"free", cat:"marketing",    icon:"◎", name:"Bio Generator",         desc:"Tu bio artística en inglés y español.",                      url:"#" },
+  { id:4,  tier:"free", cat:"distribucion", icon:"◑", name:"ISRC Generator",        desc:"Registra y gestiona tus códigos ISRC.",                      url:"#" },
+  { id:5,  tier:"free", cat:"marketing",    icon:"◇", name:"Press Kit Builder",     desc:"Tu EPK profesional en minutos.",                             url:"#" },
+  { id:6,  tier:"pro",  cat:"analisis",     icon:"⟁", name:"Royalty Calculator",    desc:"Regalías reales en todas las plataformas.",                  url:"#" },
+  { id:7,  tier:"pro",  cat:"distribucion", icon:"⬡", name:"Playlist Pitch Engine", desc:"Pitches para editores de Spotify y Apple Music.",            url:"#" },
+  { id:8,  tier:"pro",  cat:"marketing",    icon:"⟐", name:"Content Calendar",      desc:"Planificador semanal adaptado a tu género.",                 url:"#" },
+  { id:9,  tier:"pro",  cat:"analisis",     icon:"◉", name:"Market Intelligence",   desc:"Data que el 90% de la industria no conoce.",                url:"#" },
+  { id:10, tier:"pro",  cat:"distribucion", icon:"⬢", name:"Label Deal Analyzer",   desc:"Analiza contratos y detecta cláusulas trampa.",             url:"#" },
+  { id:11, tier:"pro",  cat:"analisis",     icon:"⟴", name:"Sync Licensing Hub",    desc:"Licencia tu música en cine, TV y publicidad.",              url:"#" },
+  { id:12, tier:"pro",  cat:"marketing",    icon:"⬟", name:"Viral Hook Lab",        desc:"Hooks para TikTok y Reels optimizados por género.",         url:"#" },
+];
+
+// ─── STATE ─────────────────────────────────────────────────
+let isPro  = false;
+let activeCat = "all";
+let tgUser = { id: 0, username: "usuario", first_name: "Artista" };
+
+// ─── TELEGRAM SDK ──────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    if (tg.initDataUnsafe?.user) {
+      tgUser = tg.initDataUnsafe.user;
+    }
+  }
+
+  initShader();
+  initWave();
+  initAvatar(String(tgUser.id || tgUser.username || "jeff"));
+
+  document.getElementById("userName").textContent =
+    tgUser.username ? `@${tgUser.username}` : tgUser.first_name;
+
+  // Verificar plan en backend
+  checkPlan(tgUser.id);
+
+  renderTools();
+  initCategories();
+  initIntersectionObserver();
+  initGlitch();
+});
+
+// ─── CHECK PLAN ────────────────────────────────────────────
+async function checkPlan(userId) {
+  try {
+    // REEMPLAZA con tu URL de Railway
+    const res = await fetch(`https://TU-BOT.railway.app/check_plan?user_id=${userId}`);
+    const data = await res.json();
+    if (data.is_pro) activatePlan();
+  } catch (e) {
+    // Sin conexión: modo free por defecto
+  }
+}
+
+// ─── RENDER TOOLS ──────────────────────────────────────────
+function renderTools() {
+  const filtered = TOOLS.filter(t => activeCat === "all" || t.cat === activeCat);
+  const free = filtered.filter(t => t.tier === "free");
+  const pro  = filtered.filter(t => t.tier === "pro");
+
+  document.getElementById("freeCount").textContent = free.length;
+  document.getElementById("proCount").textContent  = pro.length;
+  document.getElementById("freeLabel").textContent = free.length;
+  document.getElementById("proLabel").textContent  = pro.length;
+
+  document.getElementById("freeGrid").innerHTML = free.map(t => cardHTML(t, true)).join("");
+  document.getElementById("proGrid").innerHTML  = pro.map(t => cardHTML(t, isPro)).join("");
+
+  document.getElementById("upgradeBanner").classList.toggle("hidden", isPro);
+}
+
+function cardHTML(tool, unlocked) {
+  const locked = !unlocked;
+  return `
+    <div class="tool-card ${tool.tier} ${locked ? "locked" : ""}"
+      onclick="${locked ? "openModal()" : `openTool('${tool.url}')`}">
+      ${tool.tier === "pro" ? '<div class="card-glow"></div>' : ""}
+      <div class="card-top">
+        <span class="card-icon ${tool.tier}">${tool.icon}</span>
+        <span class="card-badge ${tool.tier}">${tool.tier === "pro" ? "PRO" : "FREE"}</span>
+      </div>
+      <div class="card-name">${tool.name}</div>
+      <div class="card-desc">${tool.desc}</div>
+      <div class="card-footer">
+        <span class="card-cat">${tool.cat}</span>
+        <span class="card-action ${locked ? "lock" : "open" + (tool.tier === "pro" ? " pro" : "")}">
+          ${locked ? "🔒 UNLOCK" : "ABRIR →"}
+        </span>
+      </div>
+    </div>`;
+}
+
+// ─── CATEGORIES ────────────────────────────────────────────
+function initCategories() {
+  document.querySelectorAll(".cat-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeCat = btn.dataset.cat;
+      renderTools();
+    });
+  });
+}
+
+// ─── OPEN TOOL ─────────────────────────────────────────────
+function openTool(url) {
+  if (url === "#") return;
+  const tg = window.Telegram?.WebApp;
+  if (tg) tg.openLink(url);
+  else window.open(url, "_blank");
+}
+
+// ─── MODAL ─────────────────────────────────────────────────
+function openModal() {
+  document.getElementById("modalOverlay").classList.add("open");
+}
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById("modalOverlay")) closeModal();
+}
+function activatePro() {
+  const tg = window.Telegram?.WebApp;
+  // En producción: redirige al pago de Stars o tu sistema
+  // tg?.openInvoiceLink("TU_LINK_DE_PAGO");
+  activatePlan();
+  closeModal();
+}
+function activatePlan() {
+  isPro = true;
+  document.getElementById("proBadge").classList.add("visible");
+  document.getElementById("upgradeTopBtn").style.display = "none";
+  document.getElementById("userPlan").textContent = "ARTIST VAULT PRO · ACTIVO";
+  document.getElementById("userPlan").style.color = "var(--gold)";
+  renderTools();
+}
+
+// ─── WEBGL SHADER ──────────────────────────────────────────
+function initShader() {
+  const canvas = document.getElementById("shaderCanvas");
+  const gl = canvas.getContext("webgl");
+  if (!gl) return;
+
+  canvas.width  = canvas.offsetWidth  || 430;
+  canvas.height = canvas.offsetHeight || 240;
+
+  const mk = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s); return s;
+  };
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, mk(gl.VERTEX_SHADER, `attribute vec2 a;void main(){gl_Position=vec4(a,0,1);}`));
+  gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    uniform float t; uniform vec2 r;
+    vec3 pal(float x){return vec3(0.02,0.01,0.08)+vec3(0.3,0.15,0.4)*cos(6.28*(vec3(1.0,.8,.5)*x+vec3(0.,.1,.3)));}
+    void main(){
+      vec2 uv=(gl_FragCoord.xy*2.-r)/min(r.x,r.y),uv0=uv;
+      vec3 col=vec3(0.);
+      for(float i=0.;i<4.;i++){
+        uv=fract(uv*1.5)-.5;
+        float d=length(uv)*exp(-length(uv0));
+        vec3 c=pal(length(uv0)+i*.4+t*.2);
+        d=sin(d*8.+t)*.125; d=abs(d); d=pow(.01/d,1.1);
+        col+=c*d;
+      }
+      gl_FragColor=vec4(col*.5,1.);
+    }`));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "a");
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const tLoc = gl.getUniformLocation(prog, "t");
+  const rLoc = gl.getUniformLocation(prog, "r");
+  const t0 = Date.now();
+
+  (function tick() {
+    gl.uniform1f(tLoc, (Date.now() - t0) / 1000);
+    gl.uniform2f(rLoc, canvas.width, canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(tick);
+  })();
+}
+
+// ─── WAVE ──────────────────────────────────────────────────
+function initWave() {
+  const canvas = document.getElementById("waveCanvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width  = canvas.offsetWidth  || 390;
+  canvas.height = 34;
+  const W = canvas.width, H = canvas.height, bars = 28;
+  let t = 0;
+  (function draw() {
+    t += 0.035;
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, "#00F5A0");
+    g.addColorStop(0.5, "#7C3AFF");
+    g.addColorStop(1, "#FF2D78");
+    ctx.fillStyle = g;
+    for (let i = 0; i < bars; i++) {
+      const x  = (i / bars) * W;
+      const bw = (W / bars) - 1.5;
+      const v  = Math.sin(t + i*.45)*.5 + Math.sin(t*1.3 + i*.3)*.3 + Math.sin(t*.6 + i*.7)*.2;
+      const h  = Math.abs(v) * H * .82 + 3;
+      ctx.fillRect(x, (H - h) / 2, bw, h);
+    }
+    requestAnimationFrame(draw);
+  })();
+}
+
+// ─── GENERATIVE AVATAR ─────────────────────────────────────
+function initAvatar(seed) {
+  const canvas = document.getElementById("avatarCanvas");
+  const ctx = canvas.getContext("2d");
+  const S = canvas.width;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  const rnd = (n) => { h ^= h<<13; h ^= h>>17; h ^= h<<5; return Math.abs(h % n); };
+  const hue1 = rnd(360), hue2 = (hue1 + 140 + rnd(40)) % 360;
+  ctx.fillStyle = `hsl(${hue1},60%,8%)`; ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 5; i++) {
+    const x = rnd(S), y = rnd(S), r = 6 + rnd(S / 2);
+    const g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0, `hsla(${hue2},90%,65%,.8)`);
+    g.addColorStop(1, `hsla(${hue1},60%,20%,0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  }
+  ctx.strokeStyle = `hsla(${hue2},50%,60%,.12)`; ctx.lineWidth = .5;
+  for (let i = 0; i < S; i += 7) {
+    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,S); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(S,i); ctx.stroke();
+  }
+}
+
+// ─── GLITCH ────────────────────────────────────────────────
+function initGlitch() {
+  const el = document.getElementById("glitchText");
+  setInterval(() => {
+    el.style.textShadow = "-2px 0 #FF2D78, 2px 0 #00F5A0";
+    setTimeout(() => el.style.textShadow = "none", 140);
+  }, 3600);
+}
+
+// ─── INTERSECTION OBSERVER (fade in) ───────────────────────
+function initIntersectionObserver() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); });
+  }, { threshold: 0.08 });
+  document.querySelectorAll(".fade").forEach(el => obs.observe(el));
+}
+</script>
+</body>
+</html>

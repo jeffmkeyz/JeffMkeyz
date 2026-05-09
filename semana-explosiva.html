@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Semana Explosiva · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --mint:   #00F5A0;
+      --pink:   #FF2D78;
+      --purple: #7C3AFF;
+      --gold:   #FFB830;
+      --bg:     #030308;
+      --s:      #0D0D1A;
+      --s2:     #12121F;
+      --border: rgba(255,255,255,0.06);
+      --muted:  #4A4A6A;
+      --dim:    #333355;
+      --text:   #E0E0F0;
+    }
+    html, body {
+      background: var(--bg);
+      min-height: 100vh;
+      font-family: 'Syne', sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 0; }
+
+    /* ── HEADER ── */
+    #header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(3,3,8,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    #backBtn {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--s); border: 1px solid var(--border);
+      color: var(--muted); font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      transition: all .2s;
+    }
+    #backBtn:hover { color: var(--text); border-color: rgba(255,255,255,.15); }
+    .header-info { flex: 1; }
+    .header-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: .25em;
+      color: var(--mint); margin-bottom: 2px;
+    }
+    .header-title { font-size: 16px; font-weight: 800; color: #fff; }
+
+    /* ── MAIN ── */
+    #main { padding: 16px 16px 48px; max-width: 500px; margin: 0 auto; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--s);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card.hidden { display: none !important; }
+    .card.accent-mint { border-color: rgba(0,245,160,.2); background: rgba(0,245,160,.03); }
+    .card.accent-pink { border-color: rgba(255,45,120,.2); background: rgba(255,45,120,.03); }
+
+    /* ── SECTION TITLE ── */
+    .sec-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: var(--mint); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sec-title::before { content: ''; width: 14px; height: 1px; background: var(--mint); }
+
+    /* ── INPUTS ── */
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      outline: none;
+      margin-bottom: 8px;
+      transition: border-color .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: rgba(0,245,160,.35);
+    }
+    textarea { min-height: 60px; resize: vertical; }
+    select option { background: var(--s2); }
+    .label {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .1em;
+      margin-bottom: 4px; display: block;
+    }
+    .row { display: flex; gap: 8px; }
+    .row > div { flex: 1; min-width: 0; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex; align-items: center;
+      justify-content: center; gap: 5px;
+      padding: 10px 16px; border: none; border-radius: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      cursor: pointer; transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(.96); }
+    .btn-mint  { background: var(--mint); color: #000; }
+    .btn-purple{ background: linear-gradient(135deg, var(--purple), var(--pink)); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-danger{ background: transparent; border: 1px solid var(--pink); color: var(--pink); }
+    .btn-sm    { padding: 5px 10px; font-size: 9px; }
+    .btn-gold  { background: rgba(255,184,48,.12); border: 1px solid rgba(255,184,48,.3); color: var(--gold); }
+
+    /* ── SONG ITEM ── */
+    .song-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; margin-bottom: 8px;
+      background: var(--s2); border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .song-name { font-size: 13px; font-weight: 700; color: #fff; }
+    .song-date { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+    /* ── TASK ITEM ── */
+    .task-item {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      transition: opacity .2s;
+    }
+    .task-item.done { opacity: .45; }
+    .task-item.done .task-desc { text-decoration: line-through; }
+    .task-platform {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    }
+    .task-platform.tiktok   { color: var(--mint); }
+    .task-platform.instagram{ color: var(--purple); }
+    .task-platform.youtube  { color: var(--pink); }
+    .task-platform.other    { color: var(--gold); }
+    .task-time {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; color: var(--dim);
+    }
+    .task-desc { font-size: 12px; color: var(--text); line-height: 1.5; margin: 8px 0 4px; }
+    .task-caption {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--muted);
+      font-style: italic; margin-bottom: 8px;
+    }
+    .task-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .task-check {
+      display: flex; align-items: center; gap: 5px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; color: var(--muted); cursor: pointer;
+    }
+    input[type="checkbox"] {
+      width: 14px; height: 14px; accent-color: var(--mint);
+      margin: 0; padding: 0;
+    }
+
+    /* ── TOGGLE BAR ── */
+    .toggle-bar {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 12px;
+    }
+    .toggle-bar .sec-title { margin-bottom: 0; }
+    .toggle-label {
+      display: flex; align-items: center; gap: 5px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; color: var(--muted); cursor: pointer;
+    }
+
+    /* ── SMART BOX ── */
+    .smart-box {
+      background: rgba(0,245,160,.04);
+      border: 1px solid rgba(0,245,160,.18);
+      border-radius: 12px;
+      padding: 12px; margin-bottom: 12px;
+    }
+    .smart-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; color: var(--mint);
+      letter-spacing: .15em; margin-bottom: 10px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--dim);
+      text-align: center; padding: 16px 0;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0 12px;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; color: var(--dim); letter-spacing: .1em;
+    }
+
+    /* ── BTN ROW ── */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="backBtn" onclick="goBack()">←</div>
+  <div class="header-info">
+    <div class="header-tag">◈ MARKETING · FREE</div>
+    <div class="header-title">Semana Explosiva</div>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- CANCIONES -->
+  <div class="card">
+    <div class="sec-title">Mis canciones</div>
+    <div id="song-list"></div>
+    <button class="btn btn-mint" id="add-song-btn" style="width:100%;">+ Nueva canción</button>
+  </div>
+
+  <!-- FORM NUEVA CANCIÓN -->
+  <div class="card accent-mint hidden" id="new-song-form">
+    <div class="sec-title">Nueva canción</div>
+    <div class="row">
+      <div>
+        <label class="label">Título</label>
+        <input type="text" id="song-name" placeholder="Nombre del tema"/>
+      </div>
+      <div>
+        <label class="label">Lanzamiento</label>
+        <input type="date" id="song-date"/>
+      </div>
+    </div>
+
+    <!-- SMART TAGS -->
+    <div class="smart-box">
+      <div class="smart-title">⟁ SMART TAGS — análisis por IA local</div>
+      <div class="row" style="align-items:flex-end; gap:8px;">
+        <div style="flex:1;">
+          <label class="label">Analiza el título</label>
+          <input type="text" id="smart-input" placeholder="Escribe para sugerencias" style="margin-bottom:0;"/>
+        </div>
+        <button class="btn btn-mint btn-sm" id="analyze-btn" style="margin-bottom:0; height:36px;">🔍</button>
+      </div>
+      <div id="smart-results" class="hidden" style="margin-top:10px;">
+        <div class="row">
+          <div>
+            <label class="label">Género</label>
+            <input type="text" id="sug-genre"/>
+          </div>
+          <div>
+            <label class="label">Tags</label>
+            <input type="text" id="sug-tags"/>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="apply-smart-btn">Usar sugerencias →</button>
+      </div>
+    </div>
+
+    <label class="label">Género</label>
+    <input type="text" id="song-genre" placeholder="Trap, Dembow, Afrobeat..."/>
+    <label class="label">Tags / Moods</label>
+    <input type="text" id="song-tags" placeholder="calle, flow, barrio"/>
+
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn btn-purple" id="save-song-btn" style="flex:1;">Guardar</button>
+      <button class="btn btn-danger" id="cancel-song-btn">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- SEMANA EXPLOSIVA -->
+  <div class="card">
+    <div class="toggle-bar">
+      <div class="sec-title">Semana explosiva</div>
+      <label class="toggle-label">
+        <input type="checkbox" id="show-completed-check"/> Ver completados
+      </label>
+    </div>
+    <div id="plan-container"></div>
+    <div class="btn-row">
+      <button class="btn btn-purple" id="generate-explosive-btn" style="flex:1;">⚡ Generar semana</button>
+      <button class="btn btn-ghost" id="add-custom-task-btn">+ Tarea</button>
+    </div>
+  </div>
+
+  <!-- FORM TAREA PERSONALIZADA -->
+  <div class="card accent-pink hidden" id="custom-task-form">
+    <div class="sec-title">Tarea personalizada</div>
+    <div class="row">
+      <div>
+        <label class="label">Fecha</label>
+        <input type="date" id="custom-date"/>
+      </div>
+      <div>
+        <label class="label">Hora</label>
+        <input type="time" id="custom-time" value="12:00"/>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label class="label">Plataforma</label>
+        <select id="custom-platform">
+          <option>Instagram</option>
+          <option>TikTok</option>
+          <option>YouTube</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">Tipo</label>
+        <select id="custom-type">
+          <option>Reel</option>
+          <option>Story</option>
+          <option>Post</option>
+          <option>Video</option>
+        </select>
+      </div>
+    </div>
+    <label class="label">Descripción</label>
+    <textarea id="custom-description" placeholder="¿Qué hay que hacer?"></textarea>
+    <label class="label">Caption / Texto del post</label>
+    <textarea id="custom-text" placeholder="Texto para copiar directamente..."></textarea>
+    <div class="btn-row">
+      <button class="btn btn-mint" id="save-custom-btn" style="flex:1;">Guardar tarea</button>
+      <button class="btn btn-danger" id="cancel-custom-btn">Cancelar</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+(function() {
+  // ── TELEGRAM SDK ──
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  // ── DATOS ──
+  const SONGS_KEY = 'av_songs_v1';
+  const TASKS_KEY = 'av_tasks_v1';
+  let songs = [], tasks = [];
+  try { const r = localStorage.getItem(SONGS_KEY); if (r) songs = JSON.parse(r); if (!Array.isArray(songs)) songs = []; } catch(e){ songs = []; }
+  try { const r = localStorage.getItem(TASKS_KEY); if (r) tasks = JSON.parse(r); if (!Array.isArray(tasks)) tasks = []; } catch(e){ tasks = []; }
+
+  function save() {
+    localStorage.setItem(SONGS_KEY, JSON.stringify(songs));
+    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }
+
+  // ── UTILS ──
+  function getNextSunday() {
+    const d = new Date();
+    d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+    return d;
+  }
+  function esc(t) {
+    const d = document.createElement('div');
+    d.textContent = t || ''; return d.innerHTML;
+  }
+  function platformClass(p) {
+    const m = { TikTok:'tiktok', Instagram:'instagram', YouTube:'youtube' };
+    return m[p] || 'other';
+  }
+
+  // ── SMART TAGS ──
+  const kwMap = {
+    'polvo':['Trap','perreo, explícito, calle'],
+    'calle':['Trap','barrio, tigueraje, real'],
+    'recuerdo':['Trap melódico','melancolía, nostalgia'],
+    'pienso':['Trap melódico','reflexivo, íntimo'],
+    'barrio':['Trap','calle, perreo, saoco'],
+    'pachangeo':['Dembow/Trap','fiesta, calle, flow'],
+    'linda':['Trap romántico','romance, suave'],
+    'noche':['Trap','party, oscuro, tigueraje'],
+    'mal':['Trap','agresivo, calle'],
+    'domingo':['Trap','fresco, lanzamiento'],
+    'amor':['Trap romántico','amor, sentimientos'],
+    'dembow':['Dembow','ritmo, perreo, RD'],
+    'afro':['Afrobeat','afro, groove, baile'],
+  };
+  function analyzeTitle(title) {
+    const low = title.toLowerCase();
+    for (const [k, v] of Object.entries(kwMap)) {
+      if (low.includes(k)) return { genre: v[0], tags: v[1] };
+    }
+    return { genre: 'Trap', tags: 'calle, flow' };
+  }
+
+  // ── RENDER SONGS ──
+  function renderSongs() {
+    const el = document.getElementById('song-list');
+    if (!songs.length) {
+      el.innerHTML = '<p class="empty">No hay canciones aún.<br/>Añade una para empezar.</p>';
+      return;
+    }
+    el.innerHTML = songs.map((s, i) => `
+      <div class="song-item">
+        <div>
+          <div class="song-name">${esc(s.name)}</div>
+          <div class="song-date">${s.genre ? s.genre + ' · ' : ''}${s.date || 'sin fecha'}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-gold btn-sm" onclick="genWeek(${i})">⚡ Semana</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteSong(${i})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── RENDER TASKS ──
+  function renderTasks() {
+    const el = document.getElementById('plan-container');
+    const showDone = document.getElementById('show-completed-check').checked;
+    const filtered = tasks.filter(t => showDone || !t.done);
+    if (!filtered.length) {
+      el.innerHTML = '<p class="empty">Sin tareas programadas.<br/>Genera una semana explosiva o añade una tarea.</p>';
+      return;
+    }
+    filtered.sort((a,b) => (a.date+'T'+a.time).localeCompare(b.date+'T'+b.time));
+
+    // Group by date
+    const byDate = {};
+    filtered.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
+
+    el.innerHTML = Object.entries(byDate).map(([date, dayTasks]) => {
+      const d = new Date(date + 'T00:00:00');
+      const dayName = d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
+      return `
+        <div class="divider">
+          <div class="divider-line"></div>
+          <div class="divider-text">${dayName.toUpperCase()}</div>
+          <div class="divider-line"></div>
+        </div>
+        ${dayTasks.map(t => `
+          <div class="task-item ${t.done ? 'done' : ''}">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="task-platform ${platformClass(t.platform)}">${t.platform} · ${t.type}</span>
+              <span class="task-time">${t.time}</span>
+            </div>
+            <div class="task-desc">${esc(t.description)}</div>
+            ${t.text ? `<div class="task-caption">"${esc(t.text)}"</div>` : ''}
+            <div class="task-actions">
+              <label class="task-check">
+                <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')"/> Hecho
+              </label>
+              <button class="btn btn-ghost btn-sm" onclick="copyTask('${t.id}')">Copiar</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }).join('');
+  }
+
+  // ── GLOBAL ACTIONS ──
+  window.toggleTask = (id) => {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); renderTasks(); }
+  };
+  window.deleteTask = (id) => {
+    tasks = tasks.filter(t => t.id !== id);
+    save(); renderTasks();
+  };
+  window.copyTask = (id) => {
+    const t = tasks.find(t => t.id === id);
+    if (!t) return;
+    const txt = t.text || t.description;
+    navigator.clipboard?.writeText(txt).then(() => {
+      if (tg) tg.showAlert('✅ Copiado al portapapeles');
+      else alert('✅ Copiado');
+    });
+  };
+  window.deleteSong = (i) => {
+    if (!confirm('¿Eliminar esta canción?')) return;
+    songs.splice(i, 1);
+    save(); renderSongs();
+  };
+  window.genWeek = (idx) => {
+    const song = songs[idx];
+    if (!song?.date) {
+      if (tg) tg.showAlert('La canción necesita una fecha de lanzamiento.');
+      else alert('La canción necesita una fecha de lanzamiento.');
+      return;
+    }
+    const rel = new Date(song.date + 'T00:00:00');
+    const tpl = [
+      { dayOffset:0, tasks:[
+        { time:'10:00', platform:'TikTok',     type:'Video',          description:`Video del estribillo con la portada de "${song.name}" y letra en pantalla. Duración: 15s.` },
+        { time:'12:00', platform:'Instagram',  type:'Story',          description:'Enlace directo al tema en Spotify con sticker de "Nuevo lanzamiento".', text:'🔥 Ya fuera. Link en bio.' },
+        { time:'18:00', platform:'YouTube',    type:'Video',          description:'Subir el visualizer o lyric video del tema completo.' },
+        { time:'20:00', platform:'TikTok',     type:'Video',          description:`Detrás de cámaras grabando "${song.name}".` }
+      ]},
+      { dayOffset:1, tasks:[
+        { time:'11:00', platform:'Instagram',  type:'Story',          description:'Reposte de seguidores escuchando el tema.', text:'Gracias por el apoyo 🙏' },
+        { time:'16:00', platform:'TikTok',     type:'Video',          description:'Explica una parte de la letra (el estribillo) en tono cercano.' }
+      ]},
+      { dayOffset:2, tasks:[
+        { time:'13:00', platform:'Instagram',  type:'Reel',           description:`Comparación entre el demo y la versión final de "${song.name}".` },
+        { time:'19:00', platform:'TikTok',     type:'Video',          description:'Reacciona a los comentarios que han dejado sobre el tema.' }
+      ]},
+      { dayOffset:3, tasks:[
+        { time:'10:00', platform:'Instagram',  type:'Story',          description:'Encuesta: ¿Cuál es tu parte favorita? Opciones A/B.' },
+        { time:'17:00', platform:'YouTube',    type:'Community Post', description:'Foto del set de grabación o portada en la pestaña Comunidad.' }
+      ]},
+      { dayOffset:4, tasks:[
+        { time:'14:00', platform:'TikTok',     type:'Video',          description:'Reto: "¿Dónde escuchaste el tema por primera vez?".' },
+        { time:'21:00', platform:'Instagram',  type:'Reel',           description:'Adelanto exclusivo del próximo lanzamiento (siguiente domingo).' }
+      ]},
+      { dayOffset:5, tasks:[
+        { time:'12:00', platform:'Instagram',  type:'Story',          description:'Recordatorio: nuevo tema este domingo.' },
+        { time:'19:00', platform:'TikTok',     type:'Video',          description:`Contenido gancho: "Si te gustó "${song.name}", espera a esto..." con adelanto.` }
+      ]},
+      { dayOffset:6, tasks:[
+        { time:'10:00', platform:'Instagram',  type:'Story',          description:'Cuenta regresiva para el próximo domingo.' },
+        { time:'20:00', platform:'TikTok',     type:'Video',          description:'Previa: foto del estudio o portada del siguiente lanzamiento.' }
+      ]}
+    ];
+    const newTasks = [];
+    tpl.forEach(day => {
+      const td = new Date(rel);
+      td.setDate(td.getDate() + day.dayOffset);
+      const dateStr = td.toISOString().split('T')[0];
+      day.tasks.forEach(t => newTasks.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+        songName: song.name, date: dateStr,
+        time: t.time, platform: t.platform, type: t.type,
+        description: t.description, text: t.text || '', done: false
+      }));
+    });
+    tasks = [...tasks.filter(t => t.songName !== song.name), ...newTasks];
+    save(); renderTasks();
+    if (tg) tg.showAlert(`✅ Semana explosiva generada para "${song.name}"`);
+  };
+
+  // ── BACK ──
+  window.goBack = () => {
+    if (tg) tg.close();
+    else history.back();
+  };
+
+  // ── EVENTS ──
+  document.getElementById('add-song-btn').addEventListener('click', () => {
+    document.getElementById('new-song-form').classList.remove('hidden');
+    document.getElementById('song-date').valueAsDate = getNextSunday();
+    document.getElementById('song-name').focus();
+  });
+  document.getElementById('cancel-song-btn').addEventListener('click', () => {
+    document.getElementById('new-song-form').classList.add('hidden');
+  });
+  document.getElementById('save-song-btn').addEventListener('click', () => {
+    const name = document.getElementById('song-name').value.trim();
+    if (!name) { alert('El título es obligatorio.'); return; }
+    songs.push({
+      name,
+      genre: document.getElementById('song-genre').value,
+      date: document.getElementById('song-date').value,
+      tags: document.getElementById('song-tags').value
+    });
+    save(); renderSongs();
+    document.getElementById('new-song-form').classList.add('hidden');
+    ['song-name','song-genre','song-tags','smart-input','sug-genre','sug-tags'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('smart-results').classList.add('hidden');
+  });
+
+  document.getElementById('analyze-btn').addEventListener('click', () => {
+    const title = document.getElementById('smart-input').value.trim() || document.getElementById('song-name').value.trim();
+    if (!title) { alert('Escribe un título primero.'); return; }
+    const r = analyzeTitle(title);
+    document.getElementById('sug-genre').value = r.genre;
+    document.getElementById('sug-tags').value = r.tags;
+    document.getElementById('smart-results').classList.remove('hidden');
+  });
+  document.getElementById('apply-smart-btn').addEventListener('click', () => {
+    document.getElementById('song-genre').value = document.getElementById('sug-genre').value;
+    document.getElementById('song-tags').value = document.getElementById('sug-tags').value;
+  });
+
+  document.getElementById('generate-explosive-btn').addEventListener('click', () => {
+    if (!songs.length) { alert('Crea una canción primero.'); return; }
+    const withDate = songs.filter(s => s.date);
+    if (!withDate.length) { alert('Ninguna canción tiene fecha de lanzamiento.'); return; }
+    genWeek(songs.indexOf(withDate[withDate.length-1]));
+  });
+
+  document.getElementById('add-custom-task-btn').addEventListener('click', () => {
+    document.getElementById('custom-task-form').classList.remove('hidden');
+  });
+  document.getElementById('cancel-custom-btn').addEventListener('click', () => {
+    document.getElementById('custom-task-form').classList.add('hidden');
+  });
+  document.getElementById('save-custom-btn').addEventListener('click', () => {
+    const date = document.getElementById('custom-date').value;
+    const description = document.getElementById('custom-description').value.trim();
+    if (!date || !description) { alert('Fecha y descripción son obligatorias.'); return; }
+    tasks.push({
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
+      songName: 'Personalizado',
+      date, time: document.getElementById('custom-time').value,
+      platform: document.getElementById('custom-platform').value,
+      type: document.getElementById('custom-type').value,
+      description,
+      text: document.getElementById('custom-text').value.trim(),
+      done: false
+    });
+    save(); renderTasks();
+    document.getElementById('custom-task-form').classList.add('hidden');
+    document.getElementById('custom-description').value = '';
+    document.getElementById('custom-text').value = '';
+  });
+
+  document.getElementById('show-completed-check').addEventListener('change', renderTasks);
+
+  // ── INIT ──
+  renderSongs();
+  renderTasks();
+})();
+</script>
+</body>
+</html>

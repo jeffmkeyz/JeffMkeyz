@@ -74,9 +74,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-async def setup_menu_button(app):
+async def setup_menu_button(application):
     """Configura el botón de menú persistente al iniciar el bot."""
-    await app.bot.set_chat_menu_button(
+    await application.bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
             text="🎛️ Artist Vault",
             web_app=WebAppInfo(url=WEBAPP_URL)
@@ -119,7 +119,7 @@ def check_plan():
 def activate_pro():
     """
     Llamado desde tu sistema de pagos (Stripe, Stars, etc.)
-    Body: { "user_id": 6097145815 }
+    Body: { "user_id": 123456789 }
     """
     data    = request.get_json()
     user_id = data.get("user_id")
@@ -144,12 +144,14 @@ def main():
     log.info(f"Flask corriendo en puerto {PORT}")
 
     # Bot
-    app = Application.builder().token(BOT_TOKEN).build()
+    app = (
+        Application.builder()
+        .token(BOT_TOKEN)
+        .post_init(setup_menu_button)
+        .build()
+    )
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    # Menu button al iniciar
-    app.post_init = setup_menu_button
 
     log.info("Bot iniciado.")
     app.run_polling(drop_pending_updates=True)

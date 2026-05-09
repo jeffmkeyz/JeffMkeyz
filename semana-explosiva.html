@@ -284,41 +284,40 @@
   function renderSongBar(){
     const bar = document.getElementById('songBar');
     bar.innerHTML = '';
+
     songs.forEach(function(s, i){
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;';
+
       const pill = document.createElement('div');
-      pill.className = 'song-pill' + (i === actSong ? ' active' : '');
-      pill.style.cssText = 'position:relative;flex-shrink:0;cursor:pointer;';
+      pill.className = 'song-pill' + (i===actSong?' active':'');
+      pill.style.cursor = 'pointer';
+      pill.innerHTML = '<div class="sname">'+esc(s.name)+'</div><div class="sdate">'+(s.date?fmtDate(s.date):'SIN FECHA')+'</div>';
+      pill.onclick = function(){ selSong(i); };
+      wrap.appendChild(pill);
 
-      const nameEl = document.createElement('div');
-      nameEl.className = 'sname';
-      nameEl.textContent = s.name;
-      pill.appendChild(nameEl);
-
-      const dateEl = document.createElement('div');
-      dateEl.className = 'sdate';
-      dateEl.textContent = s.date ? fmtDate(s.date) : 'SIN FECHA';
-      pill.appendChild(dateEl);
-
-      pill.addEventListener('click', function(){ selSong(i); });
-
-      if(i === actSong){
-        const xBtn = document.createElement('div');
-        xBtn.textContent = '✕';
-        xBtn.style.cssText = 'position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#FF2D78;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;';
-        xBtn.addEventListener('click', function(e){
-          e.stopPropagation();
-          delSong(i);
-        });
-        pill.appendChild(xBtn);
-      }
-      bar.appendChild(pill);
+      const del = document.createElement('button');
+      del.textContent = '🗑';
+      del.style.cssText = 'flex-shrink:0;background:rgba(255,45,120,.15);border:1px solid rgba(255,45,120,.3);color:#FF2D78;border-radius:8px;padding:6px 8px;font-size:13px;cursor:pointer;';
+      del.onclick = function(){
+        songs.splice(i,1);
+        tasks = tasks.filter(function(t){ return t.si!==i; });
+        tasks.forEach(function(t){ if(t.si>i) t.si--; });
+        actSong = Math.max(0, Math.min(actSong, songs.length-1));
+        actDay = 0;
+        save();
+        renderAll();
+        toast('Lanzamiento eliminado');
+      };
+      wrap.appendChild(del);
+      bar.appendChild(wrap);
     });
 
     const addBtn = document.createElement('div');
     addBtn.id = 'addPill';
+    addBtn.style.cssText = 'flex-shrink:0;padding:7px 14px;background:transparent;border:1px dashed rgba(0,245,160,.3);border-radius:20px;cursor:pointer;font-family:Space Mono,monospace;font-size:10px;color:#00F5A0;display:flex;align-items:center;white-space:nowrap;';
     addBtn.textContent = '+ Nuevo lanzamiento';
-    addBtn.style.cssText = 'flex-shrink:0;padding:7px 14px;background:transparent;border:1px dashed rgba(0,245,160,.3);border-radius:20px;cursor:pointer;font-family:Space Mono,monospace;font-size:10px;color:var(--mint);display:flex;align-items:center;gap:5px;';
-    addBtn.addEventListener('click', function(){ openModal('song'); });
+    addBtn.onclick = function(){ openModal('song'); };
     bar.appendChild(addBtn);
   }
 

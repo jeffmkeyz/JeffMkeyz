@@ -119,7 +119,7 @@ def check_plan():
 def activate_pro():
     """
     Llamado desde tu sistema de pagos (Stripe, Stars, etc.)
-    Body: { "user_id": 123456789 }
+    Body: { "user_id": 6097145815 }
     """
     data    = request.get_json()
     user_id = data.get("user_id")

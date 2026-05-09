@@ -7,638 +7,473 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --mint:   #00F5A0;
-      --pink:   #FF2D78;
-      --purple: #7C3AFF;
-      --gold:   #FFB830;
-      --bg:     #030308;
-      --s:      #0D0D1A;
-      --s2:     #12121F;
-      --border: rgba(255,255,255,0.06);
-      --muted:  #4A4A6A;
-      --dim:    #333355;
-      --text:   #E0E0F0;
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;
+      --bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);
+      --muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;
     }
-    html, body {
-      background: var(--bg);
-      min-height: 100vh;
-      font-family: 'Syne', sans-serif;
-      color: var(--text);
-      overflow-x: hidden;
-    }
-    ::-webkit-scrollbar { width: 0; }
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
 
-    /* ── HEADER ── */
-    #header {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(3,3,8,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 20px;
-      display: flex; align-items: center; gap: 12px;
-    }
-    #backBtn {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: var(--s); border: 1px solid var(--border);
-      color: var(--muted); font-size: 16px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; flex-shrink: 0;
-      transition: all .2s;
-    }
-    #backBtn:hover { color: var(--text); border-color: rgba(255,255,255,.15); }
-    .header-info { flex: 1; }
-    .header-tag {
-      font-family: 'Space Mono', monospace;
-      font-size: 8px; letter-spacing: .25em;
-      color: var(--mint); margin-bottom: 2px;
-    }
-    .header-title { font-size: 16px; font-weight: 800; color: #fff; }
+    /* HEADER */
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px 12px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--mint);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+    #hdrDate{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
 
-    /* ── MAIN ── */
-    #main { padding: 16px 16px 48px; max-width: 500px; margin: 0 auto; }
+    /* SONG BAR */
+    #songBar{padding:12px 18px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+    #songBar::-webkit-scrollbar{display:none;}
+    .song-pill{flex-shrink:0;padding:7px 14px;background:var(--s);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all .2s;}
+    .song-pill.active{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.35);}
+    .sname{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--text);}
+    .song-pill.active .sname{color:var(--mint);}
+    .sdate{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;}
+    #addPill{flex-shrink:0;padding:7px 14px;background:transparent;border:1px dashed rgba(0,245,160,.3);border-radius:20px;cursor:pointer;font-family:'Space Mono',monospace;font-size:10px;color:var(--mint);display:flex;align-items:center;gap:5px;}
 
-    /* ── CARD ── */
-    .card {
-      background: var(--s);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 12px;
-    }
-    .card.hidden { display: none !important; }
-    .card.accent-mint { border-color: rgba(0,245,160,.2); background: rgba(0,245,160,.03); }
-    .card.accent-pink { border-color: rgba(255,45,120,.2); background: rgba(255,45,120,.03); }
+    /* NAV */
+    #navTabs{display:flex;gap:6px;padding:12px 18px 0;overflow-x:auto;scrollbar-width:none;}
+    #navTabs::-webkit-scrollbar{display:none;}
+    .ntab{flex-shrink:0;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;}
+    .ntab.active{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.3);color:var(--mint);}
 
-    /* ── SECTION TITLE ── */
-    .sec-title {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; font-weight: 700;
-      letter-spacing: .22em; text-transform: uppercase;
-      color: var(--mint); margin-bottom: 12px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .sec-title::before { content: ''; width: 14px; height: 1px; background: var(--mint); }
+    /* PROGRESS */
+    #progSection{padding:12px 18px 0;}
+    .prog-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+    .prog-lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;}
+    .prog-cnt{font-family:'Space Mono',monospace;font-size:8px;color:var(--mint);}
+    .prog-track{height:3px;background:var(--dim);border-radius:2px;overflow:hidden;}
+    .prog-fill{height:100%;background:linear-gradient(90deg,var(--mint),var(--purple));border-radius:2px;transition:width .4s cubic-bezier(.16,1,.3,1);}
 
-    /* ── INPUTS ── */
-    input, select, textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: var(--s2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: 'Space Mono', monospace;
-      font-size: 11px;
-      outline: none;
-      margin-bottom: 8px;
-      transition: border-color .2s;
-    }
-    input:focus, select:focus, textarea:focus {
-      border-color: rgba(0,245,160,.35);
-    }
-    textarea { min-height: 60px; resize: vertical; }
-    select option { background: var(--s2); }
-    .label {
-      font-family: 'Space Mono', monospace;
-      font-size: 8px; color: var(--muted);
-      text-transform: uppercase; letter-spacing: .1em;
-      margin-bottom: 4px; display: block;
-    }
-    .row { display: flex; gap: 8px; }
-    .row > div { flex: 1; min-width: 0; }
+    /* TIMELINE */
+    #timeline{padding:12px 18px 0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;}
+    #timeline::-webkit-scrollbar{display:none;}
+    .ddot{flex-shrink:0;width:42px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;}
+    .ddot-c{width:38px;height:38px;border-radius:50%;background:var(--s);border:1.5px solid var(--dim);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:var(--muted);transition:all .2s;position:relative;}
+    .ddot.done .ddot-c{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.4);color:var(--mint);}
+    .ddot.active .ddot-c{background:rgba(124,58,255,.2);border-color:var(--purple);color:#fff;box-shadow:0 0 16px rgba(124,58,255,.25);}
+    .ddot.istoday .ddot-c::before{content:'';position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--mint);border:1.5px solid var(--bg);}
+    .ddot-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:.04em;}
+    .ddot.active .ddot-lbl{color:var(--purple);}
 
-    /* ── BUTTONS ── */
-    .btn {
-      display: inline-flex; align-items: center;
-      justify-content: center; gap: 5px;
-      padding: 10px 16px; border: none; border-radius: 10px;
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; font-weight: 700; letter-spacing: .08em;
-      cursor: pointer; transition: all .15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn:active { transform: scale(.96); }
-    .btn-mint  { background: var(--mint); color: #000; }
-    .btn-purple{ background: linear-gradient(135deg, var(--purple), var(--pink)); color: #fff; }
-    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
-    .btn-danger{ background: transparent; border: 1px solid var(--pink); color: var(--pink); }
-    .btn-sm    { padding: 5px 10px; font-size: 9px; }
-    .btn-gold  { background: rgba(255,184,48,.12); border: 1px solid rgba(255,184,48,.3); color: var(--gold); }
+    /* MAIN */
+    #main{padding:14px 18px 88px;}
 
-    /* ── SONG ITEM ── */
-    .song-item {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 12px; margin-bottom: 8px;
-      background: var(--s2); border: 1px solid var(--border);
-      border-radius: 10px;
-    }
-    .song-name { font-size: 13px; font-weight: 700; color: #fff; }
-    .song-date { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 2px; }
+    /* DAY HEADER */
+    .day-hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+    .day-num-big{font-size:40px;font-weight:800;color:#fff;line-height:1;letter-spacing:-.03em;opacity:.1;}
+    .day-inf{flex:1;}
+    .day-name{font-size:17px;font-weight:800;color:#fff;}
+    .day-date{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px;}
+    .day-pill{font-family:'Space Mono',monospace;font-size:8px;padding:3px 8px;border-radius:10px;background:rgba(0,245,160,.08);border:1px solid rgba(0,245,160,.2);color:var(--mint);}
 
-    /* ── TASK ITEM ── */
-    .task-item {
-      background: var(--s2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 8px;
-      transition: opacity .2s;
-    }
-    .task-item.done { opacity: .45; }
-    .task-item.done .task-desc { text-decoration: line-through; }
-    .task-platform {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; font-weight: 700; letter-spacing: .1em;
-    }
-    .task-platform.tiktok   { color: var(--mint); }
-    .task-platform.instagram{ color: var(--purple); }
-    .task-platform.youtube  { color: var(--pink); }
-    .task-platform.other    { color: var(--gold); }
-    .task-time {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; color: var(--dim);
-    }
-    .task-desc { font-size: 12px; color: var(--text); line-height: 1.5; margin: 8px 0 4px; }
-    .task-caption {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; color: var(--muted);
-      font-style: italic; margin-bottom: 8px;
-    }
-    .task-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .task-check {
-      display: flex; align-items: center; gap: 5px;
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; color: var(--muted); cursor: pointer;
-    }
-    input[type="checkbox"] {
-      width: 14px; height: 14px; accent-color: var(--mint);
-      margin: 0; padding: 0;
-    }
+    /* BADGE */
+    .pbadge{display:inline-flex;align-items:center;gap:4px;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.08em;padding:3px 8px;border-radius:6px;}
+    .btk{color:var(--mint);background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.2);}
+    .big{color:#CC44FF;background:rgba(204,68,255,.1);border:1px solid rgba(204,68,255,.2);}
+    .byt{color:var(--pink);background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.2);}
+    .bytc{color:var(--gold);background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.2);}
 
-    /* ── TOGGLE BAR ── */
-    .toggle-bar {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 12px;
-    }
-    .toggle-bar .sec-title { margin-bottom: 0; }
-    .toggle-label {
-      display: flex; align-items: center; gap: 5px;
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; color: var(--muted); cursor: pointer;
-    }
+    /* TASK CARD */
+    .tcard{background:var(--s);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;transition:opacity .2s,transform .1s;-webkit-tap-highlight-color:transparent;}
+    .tcard:active{transform:scale(.985);}
+    .tcard.done{opacity:.38;}
+    .tcard.done .ttitle{text-decoration:line-through;}
+    .ttop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;}
+    .tbadges{display:flex;gap:5px;flex-wrap:wrap;}
+    .ttime{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);flex-shrink:0;}
+    .ttype{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);padding:3px 0;}
+    .ttitle{font-size:13px;font-weight:700;color:#fff;line-height:1.4;margin-bottom:6px;}
+    .tbody{font-size:11px;color:var(--muted);line-height:1.65;margin-bottom:10px;}
+    .capbox{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;}
+    .cap-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--mint);letter-spacing:.15em;margin-bottom:5px;}
+    .cap-txt{font-size:11px;color:var(--text);line-height:1.5;font-style:italic;white-space:pre-wrap;}
+    .tfoot{display:flex;align-items:center;justify-content:space-between;}
+    .tchk{display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+    .tchk input[type=checkbox]{width:14px;height:14px;accent-color:var(--mint);margin:0;}
+    .tacts{display:flex;gap:6px;}
 
-    /* ── SMART BOX ── */
-    .smart-box {
-      background: rgba(0,245,160,.04);
-      border: 1px solid rgba(0,245,160,.18);
-      border-radius: 12px;
-      padding: 12px; margin-bottom: 12px;
-    }
-    .smart-title {
-      font-family: 'Space Mono', monospace;
-      font-size: 9px; color: var(--mint);
-      letter-spacing: .15em; margin-bottom: 10px;
-    }
+    /* BTNS */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:9px 14px;border:none;border-radius:10px;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+    .btn:active{transform:scale(.95);}
+    .bmint{background:var(--mint);color:#000;}
+    .bghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .bdanger{background:transparent;border:1px solid rgba(255,45,120,.3);color:var(--pink);}
+    .bpurple{background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;}
+    .bsm{padding:5px 10px;font-size:8px;}
 
-    /* ── EMPTY STATE ── */
-    .empty {
-      font-family: 'Space Mono', monospace;
-      font-size: 10px; color: var(--dim);
-      text-align: center; padding: 16px 0;
-    }
+    /* EMPTY */
+    .empty{text-align:center;padding:48px 24px;}
+    .empty-icon{font-size:40px;margin-bottom:16px;opacity:.35;}
+    .empty-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;}
+    .empty-desc{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
 
-    /* ── DIVIDER ── */
-    .divider {
-      display: flex; align-items: center; gap: 10px;
-      margin: 4px 0 12px;
-    }
-    .divider-line { flex: 1; height: 1px; background: var(--border); }
-    .divider-text {
-      font-family: 'Space Mono', monospace;
-      font-size: 8px; color: var(--dim); letter-spacing: .1em;
-    }
+    /* MODAL */
+    #mOverlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);display:none;align-items:flex-end;}
+    #mOverlay.open{display:flex;}
+    #modal{width:100%;background:var(--s);border-radius:24px 24px 0 0;border-top:1px solid var(--border);padding:24px 20px 48px;animation:slideUp .3s cubic-bezier(.16,1,.3,1);}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .mhandle{width:32px;height:3px;background:var(--dim);border-radius:2px;margin:0 auto 20px;}
+    .mtitle{font-size:18px;font-weight:800;color:#fff;margin-bottom:16px;}
+    .mlabel{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;margin-bottom:4px;display:block;}
+    .minput{width:100%;padding:10px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:12px;}
+    .minput:focus{border-color:rgba(0,245,160,.35);}
+    textarea.minput{min-height:60px;resize:none;}
+    .mrow{display:flex;gap:10px;}
+    .mrow>div{flex:1;}
+    .mbtns{display:flex;gap:8px;margin-top:4px;}
 
-    /* ── BTN ROW ── */
-    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    /* STATS */
+    .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+    .sbox{padding:10px;background:var(--s);border:1px solid var(--border);border-radius:12px;text-align:center;}
+    .sval{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:#fff;}
+    .sval.mint{color:var(--mint);}
+    .sval.gold{color:var(--gold);}
+    .slbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-top:3px;letter-spacing:.08em;}
+
+    /* DIVIDER */
+    .divrow{display:flex;align-items:center;gap:10px;margin:16px 0 12px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+
+    /* FAB */
+    #fab{position:fixed;bottom:24px;right:18px;z-index:150;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--pink));border:none;color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,255,.4);transition:transform .15s;}
+    #fab:active{transform:scale(.9);}
   </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div id="header">
-  <div id="backBtn" onclick="goBack()">←</div>
-  <div class="header-info">
-    <div class="header-tag">◈ MARKETING · FREE</div>
-    <div class="header-title">Semana Explosiva</div>
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">◈ MARKETING · ARTIST VAULT</div>
+      <div class="hdr-title">Semana Explosiva</div>
+    </div>
+    <div id="hdrDate"></div>
   </div>
 </div>
 
-<div id="main">
+<div id="songBar"></div>
+<div id="navTabs">
+  <div class="ntab active" data-tab="semana" onclick="switchTab('semana')">SEMANA</div>
+  <div class="ntab" data-tab="todo" onclick="switchTab('todo')">PENDIENTES</div>
+  <div class="ntab" data-tab="stats" onclick="switchTab('stats')">STATS</div>
+</div>
+<div id="progSection" style="display:none">
+  <div class="prog-row"><span class="prog-lbl">PROGRESO SEMANAL</span><span class="prog-cnt" id="progTxt">0/0</span></div>
+  <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+</div>
+<div id="timeline" style="display:none"></div>
+<div id="main"></div>
+<button id="fab" onclick="openModal('task')">+</button>
 
-  <!-- CANCIONES -->
-  <div class="card">
-    <div class="sec-title">Mis canciones</div>
-    <div id="song-list"></div>
-    <button class="btn btn-mint" id="add-song-btn" style="width:100%;">+ Nueva canción</button>
+<div id="mOverlay" onclick="handleOverlay(event)">
+  <div id="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="mTitle"></div>
+    <div id="mBody"></div>
   </div>
-
-  <!-- FORM NUEVA CANCIÓN -->
-  <div class="card accent-mint hidden" id="new-song-form">
-    <div class="sec-title">Nueva canción</div>
-    <div class="row">
-      <div>
-        <label class="label">Título</label>
-        <input type="text" id="song-name" placeholder="Nombre del tema"/>
-      </div>
-      <div>
-        <label class="label">Lanzamiento</label>
-        <input type="date" id="song-date"/>
-      </div>
-    </div>
-
-    <!-- SMART TAGS -->
-    <div class="smart-box">
-      <div class="smart-title">⟁ SMART TAGS — análisis por IA local</div>
-      <div class="row" style="align-items:flex-end; gap:8px;">
-        <div style="flex:1;">
-          <label class="label">Analiza el título</label>
-          <input type="text" id="smart-input" placeholder="Escribe para sugerencias" style="margin-bottom:0;"/>
-        </div>
-        <button class="btn btn-mint btn-sm" id="analyze-btn" style="margin-bottom:0; height:36px;">🔍</button>
-      </div>
-      <div id="smart-results" class="hidden" style="margin-top:10px;">
-        <div class="row">
-          <div>
-            <label class="label">Género</label>
-            <input type="text" id="sug-genre"/>
-          </div>
-          <div>
-            <label class="label">Tags</label>
-            <input type="text" id="sug-tags"/>
-          </div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="apply-smart-btn">Usar sugerencias →</button>
-      </div>
-    </div>
-
-    <label class="label">Género</label>
-    <input type="text" id="song-genre" placeholder="Trap, Dembow, Afrobeat..."/>
-    <label class="label">Tags / Moods</label>
-    <input type="text" id="song-tags" placeholder="calle, flow, barrio"/>
-
-    <div class="btn-row" style="margin-top:4px;">
-      <button class="btn btn-purple" id="save-song-btn" style="flex:1;">Guardar</button>
-      <button class="btn btn-danger" id="cancel-song-btn">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- SEMANA EXPLOSIVA -->
-  <div class="card">
-    <div class="toggle-bar">
-      <div class="sec-title">Semana explosiva</div>
-      <label class="toggle-label">
-        <input type="checkbox" id="show-completed-check"/> Ver completados
-      </label>
-    </div>
-    <div id="plan-container"></div>
-    <div class="btn-row">
-      <button class="btn btn-purple" id="generate-explosive-btn" style="flex:1;">⚡ Generar semana</button>
-      <button class="btn btn-ghost" id="add-custom-task-btn">+ Tarea</button>
-    </div>
-  </div>
-
-  <!-- FORM TAREA PERSONALIZADA -->
-  <div class="card accent-pink hidden" id="custom-task-form">
-    <div class="sec-title">Tarea personalizada</div>
-    <div class="row">
-      <div>
-        <label class="label">Fecha</label>
-        <input type="date" id="custom-date"/>
-      </div>
-      <div>
-        <label class="label">Hora</label>
-        <input type="time" id="custom-time" value="12:00"/>
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label class="label">Plataforma</label>
-        <select id="custom-platform">
-          <option>Instagram</option>
-          <option>TikTok</option>
-          <option>YouTube</option>
-        </select>
-      </div>
-      <div>
-        <label class="label">Tipo</label>
-        <select id="custom-type">
-          <option>Reel</option>
-          <option>Story</option>
-          <option>Post</option>
-          <option>Video</option>
-        </select>
-      </div>
-    </div>
-    <label class="label">Descripción</label>
-    <textarea id="custom-description" placeholder="¿Qué hay que hacer?"></textarea>
-    <label class="label">Caption / Texto del post</label>
-    <textarea id="custom-text" placeholder="Texto para copiar directamente..."></textarea>
-    <div class="btn-row">
-      <button class="btn btn-mint" id="save-custom-btn" style="flex:1;">Guardar tarea</button>
-      <button class="btn btn-danger" id="cancel-custom-btn">Cancelar</button>
-    </div>
-  </div>
-
-</div><!-- /main -->
+</div>
 
 <script>
-(function() {
-  // ── TELEGRAM SDK ──
-  const tg = window.Telegram?.WebApp;
-  if (tg) { tg.ready(); tg.expand(); }
+(function(){
+  const tg=window.Telegram?.WebApp;
+  if(tg){tg.ready();tg.expand();}
+  const toast=m=>tg?tg.showAlert(m):alert(m);
 
-  // ── DATOS ──
-  const SONGS_KEY = 'av_songs_v1';
-  const TASKS_KEY = 'av_tasks_v1';
-  let songs = [], tasks = [];
-  try { const r = localStorage.getItem(SONGS_KEY); if (r) songs = JSON.parse(r); if (!Array.isArray(songs)) songs = []; } catch(e){ songs = []; }
-  try { const r = localStorage.getItem(TASKS_KEY); if (r) tasks = JSON.parse(r); if (!Array.isArray(tasks)) tasks = []; } catch(e){ tasks = []; }
+  const SK='av_songs_v2',TK='av_tasks_v2';
+  let songs=[],tasks=[],actSong=0,actDay=0,actTab='semana';
+  try{songs=JSON.parse(localStorage.getItem(SK))||[];if(!Array.isArray(songs))songs=[];}catch(e){songs=[];}
+  try{tasks=JSON.parse(localStorage.getItem(TK))||[];if(!Array.isArray(tasks))tasks=[];}catch(e){tasks=[];}
+  const save=()=>{localStorage.setItem(SK,JSON.stringify(songs));localStorage.setItem(TK,JSON.stringify(tasks));};
+  const esc=t=>{const d=document.createElement('div');d.textContent=t||'';return d.innerHTML;};
+  const nextSun=()=>{const d=new Date();d.setDate(d.getDate()+((7-d.getDay())%7||7));return d.toISOString().split('T')[0];};
+  const fmtDate=s=>{const d=new Date(s+'T00:00:00');return d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();};
+  const addDays=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
+  const dayShort=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  const dayFull=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const bc=p=>({TikTok:'btk',Instagram:'big',YouTube:'byt','YouTube Community':'bytc'}[p]||'btk');
 
-  function save() {
-    localStorage.setItem(SONGS_KEY, JSON.stringify(songs));
-    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  const TMPL=[
+    {day:0,label:'Día del Lanzamiento',tasks:[
+      {t:'10:00',p:'TikTok',     tp:'Video 15s',   ic:'⚡',title:'Clip del hook con letra en pantalla',
+       what:'Exporta 15 segundos con el gancho principal. Overlay de letra en pantalla, sin intro — directo al hook. Usa tu mejor ángulo o la portada en movimiento.',
+       cap:'🔥 YA FUERA — {song} 🎵\n\n#NuevoTema #MusicaLatina #{genre}'},
+      {t:'12:00',p:'Instagram',  tp:'Story',        ic:'📲',title:'Link a Spotify con portada animada',
+       what:'Story con portada animada (CapCut). Sticker de música de Spotify + texto "YA DISPONIBLE". Link en bio actualizado.',
+       cap:'🎵 Ya disponible en todas las plataformas. Link en bio 👆'},
+      {t:'16:00',p:'YouTube',    tp:'Video',         ic:'🎬',title:'Sube el visualizer o lyric video completo',
+       what:'Video completo con descripción optimizada: nombre del tema, género, año, link Spotify en primer párrafo. Tags en descripción. Miniatura con buen contraste.',
+       cap:null},
+      {t:'21:00',p:'TikTok',     tp:'BTS',           ic:'🎤',title:'Behind the scenes del estudio',
+       what:'Video corto y auténtico del proceso de grabación. Sin edición excesiva — la gente quiere ver lo real. Puede ser una toma de la cabina, el micrófono, el DAW.',
+       cap:'Así fue grabando {song} 🎤\n\n#Estudio #BTS #{genre}'},
+    ]},
+    {day:1,label:'Día 1 · Tracción inicial',tasks:[
+      {t:'11:00',p:'Instagram',  tp:'Story',         ic:'🔁',title:'Repostea a quien ya escuchó el tema',
+       what:'Busca en menciones quién compartió. Répostalos con tu reacción. Si aún no hay, sube una captura del contador de streams de Spotify for Artists.',
+       cap:'Gracias por el apoyo desde el primer día 🙏❤️'},
+      {t:'17:00',p:'TikTok',     tp:'Video 30s',     ic:'🎵',title:'Explica el significado del hook',
+       what:'30 segundos contando qué significa la parte más memorable. Tono cercano, sin guión. Esta autenticidad genera conexión real y comentarios orgánicos.',
+       cap:'Lo que nadie sabe sobre esta línea de {song} 👀'},
+    ]},
+    {day:2,label:'Día 2 · Contenido de valor',tasks:[
+      {t:'13:00',p:'Instagram',  tp:'Reel',          ic:'🎞️',title:'Demo vs versión final',
+       what:'Split de cómo sonaba el tema al inicio vs cómo quedó. Si no tienes demo, usa la maqueta o una fase intermedia de producción. El contraste retiene mucho.',
+       cap:'Así empezó {song}... y así quedó 🔥\n\n#Proceso #Produccion #{genre}'},
+      {t:'20:00',p:'TikTok',     tp:'Video',         ic:'💬',title:'Reacciona a los primeros comentarios',
+       what:'Selecciona los 3-4 comentarios más curiosos, graciosos o emotivos. Reacciona en cámara de forma natural. Este formato dispara el engagement y el algoritmo lo premia.',
+       cap:null},
+    ]},
+    {day:3,label:'Día 3 · Mid-week push',tasks:[
+      {t:'10:00',p:'Instagram',  tp:'Story',         ic:'📊',title:'Encuesta interactiva A/B',
+       what:'Story con encuesta: ¿Cuál es tu parte favorita? Dos opciones concretas del tema (ej: "El estribillo" vs "El puente"). Los resultados los compartes el día 4.',
+       cap:null},
+      {t:'18:00',p:'YouTube',    tp:'Community Post',ic:'📢',title:'Post en la Comunidad de YouTube',
+       what:'Foto del set de grabación o portada del single. Texto corto agradeciendo a los que han escuchado, con el número de streams si ya sumas cifras interesantes.',
+       cap:'Ya en +{streams} reproducciones. Gracias por el amor a {song} 🙏\n\nLink en descripción 👇'},
+    ]},
+    {day:4,label:'Día 4 · Viralidad',tasks:[
+      {t:'11:00',p:'Instagram',  tp:'Story',         ic:'📣',title:'Comparte resultado de la encuesta',
+       what:'Muestra los resultados de la encuesta del día 3. Añade tu reacción: ¿Era lo que esperabas? Esto cierra el loop con los que votaron y genera más interacción.',
+       cap:null},
+      {t:'16:00',p:'TikTok',     tp:'Video',         ic:'🎯',title:'Formato para duetos o respuestas',
+       what:'Video que invite a duetos: "¿Quién lo hace mejor que yo?" o enseña el paso de baile si tiene. Algo simple que cualquiera pueda replicar usando tu audio.',
+       cap:'A ver quién lo hace mejor 👀 usa mi audio\n\n#{song} #Dueto'},
+      {t:'21:00',p:'Instagram',  tp:'Reel',          ic:'🔮',title:'Teaser de tu próximo lanzamiento',
+       what:'5-10 segundos de audio del próximo tema sobre la portada actual. No digas cuándo — solo "pronto". Crea la anticipación sin dar información concreta.',
+       cap:'Algo viene... 👀\n\n#Pronto #NuevoTema'},
+    ]},
+    {day:5,label:'Día 5 · Hype del viernes',tasks:[
+      {t:'12:00',p:'Instagram',  tp:'Story',         ic:'📣',title:'Recordatorio para quien no escuchó',
+       what:'Story simple: portada del tema + "¿Ya lo escuchaste?" con sticker de pregunta. El viernes genera un segundo pico de escuchas — mucha gente no lo vio el domingo.',
+       cap:'¿Ya escuchaste {song}? 👇 Link en bio'},
+      {t:'19:00',p:'TikTok',     tp:'Video',         ic:'🔥',title:'Hook de conversión al próximo tema',
+       what:'"Si te gustó [song], espera lo que viene este domingo..." + 5 segundos del nuevo tema. Altísima retención porque genera anticipación inmediata sobre algo concreto.',
+       cap:'Si te gustó {song}, espera al domingo... 🔥'},
+    ]},
+    {day:6,label:'Día 6 · Pre-lanzamiento',tasks:[
+      {t:'10:00',p:'Instagram',  tp:'Story',         ic:'⏳',title:'Cuenta regresiva al próximo lanzamiento',
+       what:'Story con sticker de cuenta regresiva apuntando al próximo domingo. Añade portada o foto del estudio. La gente puede suscribirse a la notificación del countdown.',
+       cap:null},
+      {t:'20:00',p:'TikTok',     tp:'Video',         ic:'🎹',title:'Previa del proceso del próximo tema',
+       what:'15 segundos del proceso de producción o grabación del siguiente tema. No enseñes demasiado — solo suficiente para generar curiosidad real.',
+       cap:'Este domingo hay nuevo tema 👀🎵\n\n#Pronto #Lanzamiento #{genre}'},
+    ]},
+  ];
+
+  function genWeek(si){
+    const s=songs[si];
+    if(!s?.date){toast('La canción necesita fecha de lanzamiento.');return;}
+    const newT=[];
+    TMPL.forEach(d=>{
+      const date=addDays(s.date,d.day);
+      d.tasks.forEach((m,mi)=>{
+        const cap=m.cap?m.cap.replace(/{song}/g,s.name).replace(/{genre}/g,s.genre||'Trap').replace(/{streams}/g,'1K'):'';
+        newT.push({id:`${si}-${d.day}-${mi}`,si,day:d.day,date,time:m.t,platform:m.p,type:m.tp,icon:m.ic,title:m.title,what:m.what.replace(/{song}/g,s.name),caption:cap,done:false,custom:false});
+      });
+    });
+    tasks=[...tasks.filter(t=>t.si!==si||t.custom),...newT];
+    save();
   }
 
-  // ── UTILS ──
-  function getNextSunday() {
-    const d = new Date();
-    d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
-    return d;
-  }
-  function esc(t) {
-    const d = document.createElement('div');
-    d.textContent = t || ''; return d.innerHTML;
-  }
-  function platformClass(p) {
-    const m = { TikTok:'tiktok', Instagram:'instagram', YouTube:'youtube' };
-    return m[p] || 'other';
+  function renderSongBar(){
+    document.getElementById('songBar').innerHTML=
+      songs.map((s,i)=>`<div class="song-pill ${i===actSong?'active':''}" onclick="selSong(${i})"><div class="sname">${esc(s.name)}</div><div class="sdate">${s.date?fmtDate(s.date):'SIN FECHA'}</div></div>`).join('')+
+      `<div id="addPill" onclick="openModal('song')">+ Nuevo lanzamiento</div>`;
   }
 
-  // ── SMART TAGS ──
-  const kwMap = {
-    'polvo':['Trap','perreo, explícito, calle'],
-    'calle':['Trap','barrio, tigueraje, real'],
-    'recuerdo':['Trap melódico','melancolía, nostalgia'],
-    'pienso':['Trap melódico','reflexivo, íntimo'],
-    'barrio':['Trap','calle, perreo, saoco'],
-    'pachangeo':['Dembow/Trap','fiesta, calle, flow'],
-    'linda':['Trap romántico','romance, suave'],
-    'noche':['Trap','party, oscuro, tigueraje'],
-    'mal':['Trap','agresivo, calle'],
-    'domingo':['Trap','fresco, lanzamiento'],
-    'amor':['Trap romántico','amor, sentimientos'],
-    'dembow':['Dembow','ritmo, perreo, RD'],
-    'afro':['Afrobeat','afro, groove, baile'],
-  };
-  function analyzeTitle(title) {
-    const low = title.toLowerCase();
-    for (const [k, v] of Object.entries(kwMap)) {
-      if (low.includes(k)) return { genre: v[0], tags: v[1] };
-    }
-    return { genre: 'Trap', tags: 'calle, flow' };
-  }
-
-  // ── RENDER SONGS ──
-  function renderSongs() {
-    const el = document.getElementById('song-list');
-    if (!songs.length) {
-      el.innerHTML = '<p class="empty">No hay canciones aún.<br/>Añade una para empezar.</p>';
-      return;
-    }
-    el.innerHTML = songs.map((s, i) => `
-      <div class="song-item">
-        <div>
-          <div class="song-name">${esc(s.name)}</div>
-          <div class="song-date">${s.genre ? s.genre + ' · ' : ''}${s.date || 'sin fecha'}</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-gold btn-sm" onclick="genWeek(${i})">⚡ Semana</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteSong(${i})">✕</button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  // ── RENDER TASKS ──
-  function renderTasks() {
-    const el = document.getElementById('plan-container');
-    const showDone = document.getElementById('show-completed-check').checked;
-    const filtered = tasks.filter(t => showDone || !t.done);
-    if (!filtered.length) {
-      el.innerHTML = '<p class="empty">Sin tareas programadas.<br/>Genera una semana explosiva o añade una tarea.</p>';
-      return;
-    }
-    filtered.sort((a,b) => (a.date+'T'+a.time).localeCompare(b.date+'T'+b.time));
-
-    // Group by date
-    const byDate = {};
-    filtered.forEach(t => { if (!byDate[t.date]) byDate[t.date] = []; byDate[t.date].push(t); });
-
-    el.innerHTML = Object.entries(byDate).map(([date, dayTasks]) => {
-      const d = new Date(date + 'T00:00:00');
-      const dayName = d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'short' });
-      return `
-        <div class="divider">
-          <div class="divider-line"></div>
-          <div class="divider-text">${dayName.toUpperCase()}</div>
-          <div class="divider-line"></div>
-        </div>
-        ${dayTasks.map(t => `
-          <div class="task-item ${t.done ? 'done' : ''}">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span class="task-platform ${platformClass(t.platform)}">${t.platform} · ${t.type}</span>
-              <span class="task-time">${t.time}</span>
-            </div>
-            <div class="task-desc">${esc(t.description)}</div>
-            ${t.text ? `<div class="task-caption">"${esc(t.text)}"</div>` : ''}
-            <div class="task-actions">
-              <label class="task-check">
-                <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}')"/> Hecho
-              </label>
-              <button class="btn btn-ghost btn-sm" onclick="copyTask('${t.id}')">Copiar</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">✕</button>
-            </div>
-          </div>
-        `).join('')}
-      `;
+  function renderTimeline(){
+    const s=songs[actSong];
+    if(!s)return;
+    const today=new Date().toISOString().split('T')[0];
+    document.getElementById('timeline').innerHTML=TMPL.map(d=>{
+      const ds=addDays(s.date,d.day);
+      const dt=tasks.filter(t=>t.si===actSong&&t.day===d.day);
+      const done=dt.length>0&&dt.every(t=>t.done);
+      const isToday=ds===today;
+      const isAct=d.day===actDay;
+      const wd=new Date(ds+'T00:00:00').getDay();
+      return `<div class="ddot ${done?'done':''} ${isAct?'active':''} ${isToday?'istoday':''}" onclick="selDay(${d.day})">
+        <div class="ddot-c">${done?'✓':dayShort[wd]}</div>
+        <div class="ddot-lbl">D${d.day}</div></div>`;
     }).join('');
   }
 
-  // ── GLOBAL ACTIONS ──
-  window.toggleTask = (id) => {
-    const t = tasks.find(t => t.id === id);
-    if (t) { t.done = !t.done; save(); renderTasks(); }
-  };
-  window.deleteTask = (id) => {
-    tasks = tasks.filter(t => t.id !== id);
-    save(); renderTasks();
-  };
-  window.copyTask = (id) => {
-    const t = tasks.find(t => t.id === id);
-    if (!t) return;
-    const txt = t.text || t.description;
-    navigator.clipboard?.writeText(txt).then(() => {
-      if (tg) tg.showAlert('✅ Copiado al portapapeles');
-      else alert('✅ Copiado');
-    });
-  };
-  window.deleteSong = (i) => {
-    if (!confirm('¿Eliminar esta canción?')) return;
-    songs.splice(i, 1);
-    save(); renderSongs();
-  };
-  window.genWeek = (idx) => {
-    const song = songs[idx];
-    if (!song?.date) {
-      if (tg) tg.showAlert('La canción necesita una fecha de lanzamiento.');
-      else alert('La canción necesita una fecha de lanzamiento.');
+  function renderProgress(){
+    const t=tasks.filter(t=>t.si===actSong);
+    const done=t.filter(t=>t.done).length,total=t.length;
+    const pct=total?Math.round(done/total*100):0;
+    document.getElementById('progTxt').textContent=`${done}/${total} · ${pct}%`;
+    document.getElementById('progFill').style.width=pct+'%';
+  }
+
+  function renderMain(){
+    const el=document.getElementById('main');
+    if(!songs.length){
+      el.innerHTML=`<div class="empty"><div class="empty-icon">⚡</div><div class="empty-title">Sin lanzamientos</div><div class="empty-desc">Añade tu primer lanzamiento<br/>y genera tu plan de semana explosiva.</div><button class="btn bpurple" onclick="openModal('song')" style="margin:0 auto">+ Nuevo lanzamiento</button></div>`;
+      document.getElementById('progSection').style.display='none';
+      document.getElementById('timeline').style.display='none';
       return;
     }
-    const rel = new Date(song.date + 'T00:00:00');
-    const tpl = [
-      { dayOffset:0, tasks:[
-        { time:'10:00', platform:'TikTok',     type:'Video',          description:`Video del estribillo con la portada de "${song.name}" y letra en pantalla. Duración: 15s.` },
-        { time:'12:00', platform:'Instagram',  type:'Story',          description:'Enlace directo al tema en Spotify con sticker de "Nuevo lanzamiento".', text:'🔥 Ya fuera. Link en bio.' },
-        { time:'18:00', platform:'YouTube',    type:'Video',          description:'Subir el visualizer o lyric video del tema completo.' },
-        { time:'20:00', platform:'TikTok',     type:'Video',          description:`Detrás de cámaras grabando "${song.name}".` }
-      ]},
-      { dayOffset:1, tasks:[
-        { time:'11:00', platform:'Instagram',  type:'Story',          description:'Reposte de seguidores escuchando el tema.', text:'Gracias por el apoyo 🙏' },
-        { time:'16:00', platform:'TikTok',     type:'Video',          description:'Explica una parte de la letra (el estribillo) en tono cercano.' }
-      ]},
-      { dayOffset:2, tasks:[
-        { time:'13:00', platform:'Instagram',  type:'Reel',           description:`Comparación entre el demo y la versión final de "${song.name}".` },
-        { time:'19:00', platform:'TikTok',     type:'Video',          description:'Reacciona a los comentarios que han dejado sobre el tema.' }
-      ]},
-      { dayOffset:3, tasks:[
-        { time:'10:00', platform:'Instagram',  type:'Story',          description:'Encuesta: ¿Cuál es tu parte favorita? Opciones A/B.' },
-        { time:'17:00', platform:'YouTube',    type:'Community Post', description:'Foto del set de grabación o portada en la pestaña Comunidad.' }
-      ]},
-      { dayOffset:4, tasks:[
-        { time:'14:00', platform:'TikTok',     type:'Video',          description:'Reto: "¿Dónde escuchaste el tema por primera vez?".' },
-        { time:'21:00', platform:'Instagram',  type:'Reel',           description:'Adelanto exclusivo del próximo lanzamiento (siguiente domingo).' }
-      ]},
-      { dayOffset:5, tasks:[
-        { time:'12:00', platform:'Instagram',  type:'Story',          description:'Recordatorio: nuevo tema este domingo.' },
-        { time:'19:00', platform:'TikTok',     type:'Video',          description:`Contenido gancho: "Si te gustó "${song.name}", espera a esto..." con adelanto.` }
-      ]},
-      { dayOffset:6, tasks:[
-        { time:'10:00', platform:'Instagram',  type:'Story',          description:'Cuenta regresiva para el próximo domingo.' },
-        { time:'20:00', platform:'TikTok',     type:'Video',          description:'Previa: foto del estudio o portada del siguiente lanzamiento.' }
-      ]}
-    ];
-    const newTasks = [];
-    tpl.forEach(day => {
-      const td = new Date(rel);
-      td.setDate(td.getDate() + day.dayOffset);
-      const dateStr = td.toISOString().split('T')[0];
-      day.tasks.forEach(t => newTasks.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
-        songName: song.name, date: dateStr,
-        time: t.time, platform: t.platform, type: t.type,
-        description: t.description, text: t.text || '', done: false
-      }));
-    });
-    tasks = [...tasks.filter(t => t.songName !== song.name), ...newTasks];
-    save(); renderTasks();
-    if (tg) tg.showAlert(`✅ Semana explosiva generada para "${song.name}"`);
+    document.getElementById('progSection').style.display='block';
+    document.getElementById('timeline').style.display='flex';
+    if(actTab==='semana') renderSemana(el);
+    else if(actTab==='todo') renderTodo(el);
+    else renderStats(el);
+  }
+
+  function renderSemana(el){
+    const s=songs[actSong];
+    const dayTpl=TMPL[actDay];
+    const dt=tasks.filter(t=>t.si===actSong&&t.day===actDay);
+    const ds=addDays(s.date,actDay);
+    const wd=new Date(ds+'T00:00:00').getDay();
+    const done=dt.filter(t=>t.done).length;
+    document.getElementById('hdrDate').textContent=fmtDate(ds);
+    if(!dt.length){
+      el.innerHTML=`<div class="day-hdr"><div class="day-num-big">D${actDay}</div><div class="day-inf"><div class="day-name">${dayTpl.label}</div><div class="day-date">${fmtDate(ds)}</div></div></div><div style="text-align:center;padding:32px 0"><div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px">Sin misiones. Genera el plan primero.</div><button class="btn bpurple" onclick="genAndRender()">⚡ Generar semana completa</button></div>`;
+      return;
+    }
+    el.innerHTML=`<div class="day-hdr"><div class="day-num-big">D${actDay}</div><div class="day-inf"><div class="day-name">${dayTpl.label}</div><div class="day-date">${dayFull[wd]} · ${fmtDate(ds)}</div></div><div class="day-pill">${done}/${dt.length}</div></div>${dt.map(tCardHTML).join('')}`;
+  }
+
+  function renderTodo(el){
+    const pending=tasks.filter(t=>t.si===actSong&&!t.done).sort((a,b)=>(a.date+'T'+a.time).localeCompare(b.date+'T'+b.time));
+    if(!pending.length){el.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">¡Todo publicado!</div><div class="empty-desc">No hay tareas pendientes<br/>para esta semana.</div></div>`;return;}
+    el.innerHTML=`<div class="divrow"><div class="divline"></div><div class="divtxt">${pending.length} PENDIENTES</div><div class="divline"></div></div>${pending.map(tCardHTML).join('')}`;
+  }
+
+  function renderStats(el){
+    const t=tasks.filter(t=>t.si===actSong);
+    const done=t.filter(t=>t.done).length,total=t.length;
+    const pct=total?Math.round(done/total*100):0;
+    const plats={};
+    t.forEach(tk=>{if(!plats[tk.platform])plats[tk.platform]={total:0,done:0};plats[tk.platform].total++;if(tk.done)plats[tk.platform].done++;});
+    el.innerHTML=`
+      <div class="divrow"><div class="divline"></div><div class="divtxt">RESUMEN</div><div class="divline"></div></div>
+      <div class="sgrid">
+        <div class="sbox"><div class="sval mint">${pct}%</div><div class="slbl">COMPLETADO</div></div>
+        <div class="sbox"><div class="sval">${done}</div><div class="slbl">PUBLICADO</div></div>
+        <div class="sbox"><div class="sval gold">${total-done}</div><div class="slbl">PENDIENTE</div></div>
+      </div>
+      <div class="divrow"><div class="divline"></div><div class="divtxt">POR PLATAFORMA</div><div class="divline"></div></div>
+      ${Object.entries(plats).map(([p,v])=>`
+        <div class="tcard" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span class="pbadge ${bc(p)}">${p}</span>
+          <div style="flex:1;margin:0 12px;height:3px;background:var(--dim);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;background:var(--mint);width:${v.total?Math.round(v.done/v.total*100):0}%;border-radius:2px;"></div>
+          </div>
+          <span style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted)">${v.done}/${v.total}</span>
+        </div>`).join('')}`;
+  }
+
+  function tCardHTML(t){
+    return `<div class="tcard ${t.done?'done':''}" id="tc-${t.id}">
+      <div class="ttop">
+        <div class="tbadges"><span class="pbadge ${bc(t.platform)}">${t.icon} ${t.platform}</span><span class="ttype">${t.type}</span></div>
+        <span class="ttime">${t.time}</span>
+      </div>
+      <div class="ttitle">${esc(t.title)}</div>
+      <div class="tbody">${esc(t.what)}</div>
+      ${t.caption?`<div class="capbox"><div class="cap-lbl">CAPTION — LISTO PARA COPIAR</div><div class="cap-txt">${esc(t.caption)}</div></div>`:''}
+      <div class="tfoot">
+        <label class="tchk"><input type="checkbox" ${t.done?'checked':''} onchange="toggleT('${t.id}')"/> ${t.done?'PUBLICADO':'MARCAR HECHO'}</label>
+        <div class="tacts">
+          ${t.caption?`<button class="btn bghost bsm" onclick="copyC('${t.id}')">COPIAR</button>`:''}
+          ${t.custom?`<button class="btn bdanger bsm" onclick="delT('${t.id}')">✕</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  window.toggleT=id=>{const t=tasks.find(t=>t.id===id);if(t){t.done=!t.done;save();renderProgress();renderTimeline();renderMain();}};
+  window.delT=id=>{tasks=tasks.filter(t=>t.id!==id);save();renderMain();};
+  window.copyC=id=>{
+    const t=tasks.find(t=>t.id===id);if(!t?.caption)return;
+    navigator.clipboard?.writeText(t.caption).then(()=>toast('✅ Caption copiado')).catch(()=>toast(t.caption));
+  };
+  window.selSong=i=>{actSong=i;actDay=0;const s=songs[i];const today=new Date().toISOString().split('T')[0];if(s?.date){for(let d=0;d<7;d++){if(addDays(s.date,d)===today){actDay=d;break;}}}renderAll();};
+  window.selDay=d=>{actDay=d;renderTimeline();renderSemana(document.getElementById('main'));};
+  window.switchTab=tab=>{actTab=tab;document.querySelectorAll('.ntab').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));renderMain();};
+  window.genAndRender=()=>{genWeek(actSong);renderAll();};
+  window.goBack=()=>{if(tg)tg.close();else history.back();};
+
+  window.openModal=type=>{
+    const ov=document.getElementById('mOverlay'),body=document.getElementById('mBody'),title=document.getElementById('mTitle');
+    if(type==='song'){
+      title.textContent='Nuevo lanzamiento';
+      body.innerHTML=`
+        <label class="mlabel">NOMBRE DEL TEMA</label>
+        <input class="minput" id="m-n" type="text" placeholder="Ej: Una Luz"/>
+        <label class="mlabel">FECHA DE LANZAMIENTO (domingo)</label>
+        <input class="minput" id="m-d" type="date" value="${nextSun()}"/>
+        <div class="mrow">
+          <div><label class="mlabel">GÉNERO</label>
+            <select class="minput" id="m-g"><option>Trap</option><option>Dembow</option><option>Afrobeat</option><option>Pop Latino</option><option>Reggaeton</option><option>R&amp;B</option></select></div>
+          <div><label class="mlabel">PLATAFORMA PRINCIPAL</label>
+            <select class="minput" id="m-pf"><option>TikTok</option><option>Instagram</option><option>YouTube</option></select></div>
+        </div>
+        <div class="mbtns">
+          <button class="btn bpurple" style="flex:1" onclick="saveSong()">⚡ CREAR Y GENERAR PLAN</button>
+          <button class="btn bghost" onclick="closeModal()">CANCELAR</button>
+        </div>`;
+    } else {
+      title.textContent='Tarea personalizada';
+      body.innerHTML=`
+        <div class="mrow">
+          <div><label class="mlabel">DÍA</label>
+            <select class="minput" id="m-day">${TMPL.map(d=>`<option value="${d.day}" ${d.day===actDay?'selected':''}>Día ${d.day}</option>`).join('')}</select></div>
+          <div><label class="mlabel">HORA</label><input class="minput" id="m-t" type="time" value="12:00"/></div>
+        </div>
+        <div class="mrow">
+          <div><label class="mlabel">PLATAFORMA</label>
+            <select class="minput" id="m-pl"><option>TikTok</option><option>Instagram</option><option>YouTube</option></select></div>
+          <div><label class="mlabel">TIPO</label>
+            <select class="minput" id="m-tp"><option>Video</option><option>Story</option><option>Reel</option><option>Post</option></select></div>
+        </div>
+        <label class="mlabel">QUÉ HAY QUE HACER</label>
+        <textarea class="minput" id="m-w" placeholder="Describe el contenido..."></textarea>
+        <label class="mlabel">CAPTION (opcional)</label>
+        <textarea class="minput" id="m-c" placeholder="Texto listo para copiar..."></textarea>
+        <div class="mbtns">
+          <button class="btn bmint" style="flex:1" onclick="saveTask()">GUARDAR</button>
+          <button class="btn bghost" onclick="closeModal()">CANCELAR</button>
+        </div>`;
+    }
+    ov.classList.add('open');
+  };
+  window.closeModal=()=>document.getElementById('mOverlay').classList.remove('open');
+  window.handleOverlay=e=>{if(e.target===document.getElementById('mOverlay'))closeModal();};
+
+  window.saveSong=()=>{
+    const name=document.getElementById('m-n').value.trim();
+    const date=document.getElementById('m-d').value;
+    if(!name){alert('El nombre es obligatorio.');return;}
+    songs.push({name,date,genre:document.getElementById('m-g').value,platform:document.getElementById('m-pf').value});
+    actSong=songs.length-1;
+    save();genWeek(actSong);
+    const today=new Date().toISOString().split('T')[0];actDay=0;
+    if(date){for(let d=0;d<7;d++){if(addDays(date,d)===today){actDay=d;break;}}}
+    closeModal();renderAll();toast(`✅ Plan generado para "${name}"`);
   };
 
-  // ── BACK ──
-  window.goBack = () => {
-    if (tg) tg.close();
-    else history.back();
+  window.saveTask=()=>{
+    const what=document.getElementById('m-w').value.trim();
+    if(!what){alert('Describe qué hay que hacer.');return;}
+    const day=parseInt(document.getElementById('m-day').value);
+    const s=songs[actSong];
+    const date=s?.date?addDays(s.date,day):new Date().toISOString().split('T')[0];
+    tasks.push({id:'c-'+Date.now().toString(36)+Math.random().toString(36).substr(2,4),si:actSong,day,date,time:document.getElementById('m-t').value,platform:document.getElementById('m-pl').value,type:document.getElementById('m-tp').value,icon:'✏️',title:'Tarea personalizada',what,caption:document.getElementById('m-c').value.trim(),done:false,custom:true});
+    save();closeModal();renderAll();
   };
 
-  // ── EVENTS ──
-  document.getElementById('add-song-btn').addEventListener('click', () => {
-    document.getElementById('new-song-form').classList.remove('hidden');
-    document.getElementById('song-date').valueAsDate = getNextSunday();
-    document.getElementById('song-name').focus();
-  });
-  document.getElementById('cancel-song-btn').addEventListener('click', () => {
-    document.getElementById('new-song-form').classList.add('hidden');
-  });
-  document.getElementById('save-song-btn').addEventListener('click', () => {
-    const name = document.getElementById('song-name').value.trim();
-    if (!name) { alert('El título es obligatorio.'); return; }
-    songs.push({
-      name,
-      genre: document.getElementById('song-genre').value,
-      date: document.getElementById('song-date').value,
-      tags: document.getElementById('song-tags').value
-    });
-    save(); renderSongs();
-    document.getElementById('new-song-form').classList.add('hidden');
-    ['song-name','song-genre','song-tags','smart-input','sug-genre','sug-tags'].forEach(id => {
-      const el = document.getElementById(id); if(el) el.value = '';
-    });
-    document.getElementById('smart-results').classList.add('hidden');
-  });
-
-  document.getElementById('analyze-btn').addEventListener('click', () => {
-    const title = document.getElementById('smart-input').value.trim() || document.getElementById('song-name').value.trim();
-    if (!title) { alert('Escribe un título primero.'); return; }
-    const r = analyzeTitle(title);
-    document.getElementById('sug-genre').value = r.genre;
-    document.getElementById('sug-tags').value = r.tags;
-    document.getElementById('smart-results').classList.remove('hidden');
-  });
-  document.getElementById('apply-smart-btn').addEventListener('click', () => {
-    document.getElementById('song-genre').value = document.getElementById('sug-genre').value;
-    document.getElementById('song-tags').value = document.getElementById('sug-tags').value;
-  });
-
-  document.getElementById('generate-explosive-btn').addEventListener('click', () => {
-    if (!songs.length) { alert('Crea una canción primero.'); return; }
-    const withDate = songs.filter(s => s.date);
-    if (!withDate.length) { alert('Ninguna canción tiene fecha de lanzamiento.'); return; }
-    genWeek(songs.indexOf(withDate[withDate.length-1]));
-  });
-
-  document.getElementById('add-custom-task-btn').addEventListener('click', () => {
-    document.getElementById('custom-task-form').classList.remove('hidden');
-  });
-  document.getElementById('cancel-custom-btn').addEventListener('click', () => {
-    document.getElementById('custom-task-form').classList.add('hidden');
-  });
-  document.getElementById('save-custom-btn').addEventListener('click', () => {
-    const date = document.getElementById('custom-date').value;
-    const description = document.getElementById('custom-description').value.trim();
-    if (!date || !description) { alert('Fecha y descripción son obligatorias.'); return; }
-    tasks.push({
-      id: Date.now().toString(36) + Math.random().toString(36).substr(2,5),
-      songName: 'Personalizado',
-      date, time: document.getElementById('custom-time').value,
-      platform: document.getElementById('custom-platform').value,
-      type: document.getElementById('custom-type').value,
-      description,
-      text: document.getElementById('custom-text').value.trim(),
-      done: false
-    });
-    save(); renderTasks();
-    document.getElementById('custom-task-form').classList.add('hidden');
-    document.getElementById('custom-description').value = '';
-    document.getElementById('custom-text').value = '';
-  });
-
-  document.getElementById('show-completed-check').addEventListener('change', renderTasks);
-
-  // ── INIT ──
-  renderSongs();
-  renderTasks();
+  function renderAll(){renderSongBar();renderTimeline();renderProgress();renderMain();}
+  renderAll();
 })();
 </script>
 </body>

@@ -513,8 +513,13 @@ function initShader() {
   const gl = canvas.getContext("webgl");
   if (!gl) return;
 
-  canvas.width  = window.innerWidth;
-  canvas.height = 240;
+  const resize = () => {
+    canvas.width  = window.innerWidth;
+    canvas.height = 240;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  };
+  resize();
+  window.addEventListener("resize", resize);
 
   const mk = (type, src) => {
     const s = gl.createShader(type);

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Semana Explosiva · Artist Vault</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="genre-db.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -197,6 +198,12 @@
   const dayShort=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
   const dayFull=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const bc=p=>({TikTok:'btk',Instagram:'big',YouTube:'byt','YouTube Community':'bytc'}[p]||'btk');
+
+  // ── SMART TAGS usa GenreDB ──
+  function analyzeTitle(title){
+    if(typeof GenreDB !== 'undefined') return GenreDB.analyzeTitle(title);
+    return { genre:'Trap', tags:'calle, flow', mood:'oscuro' };
+  }
 
   const TMPL=[
     {day:0,label:'Día del Lanzamiento',tasks:[
@@ -561,7 +568,28 @@
         <input class="minput" id="m-d" type="date" value="${nextSun()}"/>
         <div class="mrow">
           <div><label class="mlabel">GÉNERO</label>
-            <select class="minput" id="m-g"><option>Trap</option><option>Dembow</option><option>Afrobeat</option><option>Pop Latino</option><option>Reggaeton</option><option>R&amp;B</option></select></div>
+            <select class="minput" id="m-g"><option value="trap_latino">Trap Latino</option>
+              <option value="reggaeton">Reggaeton</option>
+              <option value="dembow">Dembow</option>
+              <option value="drill">Drill</option>
+              <option value="jersey_club">Jersey Club</option>
+              <option value="jersey_drill">Jersey Drill</option>
+              <option value="afrobeat">Afrobeat</option>
+              <option value="dancehall">Dancehall</option>
+              <option value="bachata">Bachata</option>
+              <option value="corridos_tumbados">Corridos Tumbados</option>
+              <option value="house">House / Tech House</option>
+              <option value="edm">EDM</option>
+              <option value="lofi">Lo-Fi</option>
+              <option value="uk_garage">UK Garage</option>
+              <option value="boom_bap">Boom Bap</option>
+              <option value="rage">Rage / Plugg</option>
+              <option value="pluggnb">Pluggnb</option>
+              <option value="detroit_type_beat">Detroit Type Beat</option>
+              <option value="r&b">R&amp;B</option>
+              <option value="pop_urbano">Pop Urbano</option>
+              <option value="hyperpop">Hyperpop</option>
+              <option value="experimental">Experimental</option></select></div>
           <div><label class="mlabel">PLATAFORMA PRINCIPAL</label>
             <select class="minput" id="m-pf"><option>TikTok</option><option>Instagram</option><option>YouTube</option></select></div>
         </div>

@@ -84,8 +84,8 @@
     .tcard.done .ttitle{text-decoration:line-through;}
     .ttop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;}
     .tbadges{display:flex;gap:5px;flex-wrap:wrap;}
-    .ttime{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);flex-shrink:0;}
-    .ttype{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);padding:3px 0;}
+    .ttime{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;letter-spacing:-.01em;}
+    .ttype{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text);}
     .ttitle{font-size:13px;font-weight:700;color:#fff;line-height:1.4;margin-bottom:6px;}
     .tbody{font-size:11px;color:var(--muted);line-height:1.65;margin-bottom:10px;}
     .capbox{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px;}
@@ -441,22 +441,86 @@
   }
 
   function tCardHTML(t){
-    return `<div class="tcard ${t.done?'done':''}" id="tc-${t.id}">
-      <div class="ttop">
-        <div class="tbadges"><span class="pbadge ${bc(t.platform)}">${t.icon} ${t.platform}</span><span class="ttype">${t.type}</span></div>
-        <span class="ttime">${t.time}</span>
-      </div>
-      <div class="ttitle">${esc(t.title)}</div>
-      <div class="tbody">${esc(t.what)}</div>
-      ${t.caption?`<div class="capbox"><div class="cap-lbl">CAPTION — LISTO PARA COPIAR</div><div class="cap-txt">${esc(t.caption)}</div></div>`:''}
-      <div class="tfoot">
-        <label class="tchk"><input type="checkbox" ${t.done?'checked':''} onchange="toggleT('${t.id}')"/> ${t.done?'PUBLICADO':'MARCAR HECHO'}</label>
-        <div class="tacts">
-          ${t.caption?`<button class="btn bghost bsm" onclick="copyC('${t.id}')">COPIAR</button>`:''}
-          ${t.custom?`<button class="btn bdanger bsm" onclick="delT('${t.id}')">✕</button>`:''}
-        </div>
-      </div>
-    </div>`;
+    const el = document.createElement('div');
+    el.className = 'tcard' + (t.done ? ' done' : '');
+    el.id = 'tc-' + t.id;
+
+    // Top row: platform badge + type + time
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;';
+    const badges = document.createElement('div');
+    badges.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+    const platBadge = document.createElement('span');
+    platBadge.className = 'pbadge ' + bc(t.platform);
+    platBadge.textContent = t.icon + ' ' + t.platform;
+    const typeBadge = document.createElement('span');
+    typeBadge.className = 'ttype';
+    typeBadge.textContent = t.type;
+    badges.appendChild(platBadge);
+    badges.appendChild(typeBadge);
+    const timeEl = document.createElement('span');
+    timeEl.className = 'ttime';
+    timeEl.textContent = t.time;
+    top.appendChild(badges);
+    top.appendChild(timeEl);
+    el.appendChild(top);
+
+    // Title
+    const title = document.createElement('div');
+    title.className = 'ttitle';
+    title.textContent = t.title;
+    el.appendChild(title);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'tbody';
+    body.textContent = t.what;
+    el.appendChild(body);
+
+    // Caption box
+    if(t.caption){
+      const capbox = document.createElement('div');
+      capbox.className = 'capbox';
+      capbox.innerHTML = '<div class="cap-lbl">CAPTION — LISTO PARA COPIAR</div>';
+      const capTxt = document.createElement('div');
+      capTxt.className = 'cap-txt';
+      capTxt.textContent = t.caption;
+      capbox.appendChild(capTxt);
+      el.appendChild(capbox);
+    }
+
+    // Footer
+    const foot = document.createElement('div');
+    foot.className = 'tfoot';
+    const chkLabel = document.createElement('label');
+    chkLabel.className = 'tchk';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = t.done;
+    chk.onchange = function(){ toggleT(t.id); };
+    chkLabel.appendChild(chk);
+    chkLabel.appendChild(document.createTextNode(' ' + (t.done ? 'PUBLICADO' : 'MARCAR HECHO')));
+    foot.appendChild(chkLabel);
+    const acts = document.createElement('div');
+    acts.className = 'tacts';
+    if(t.caption){
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn bghost bsm';
+      copyBtn.textContent = 'COPIAR CAPTION';
+      copyBtn.onclick = function(){ copyC(t.id); };
+      acts.appendChild(copyBtn);
+    }
+    if(t.custom){
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn bdanger bsm';
+      delBtn.textContent = '✕';
+      delBtn.onclick = function(){ delT(t.id); };
+      acts.appendChild(delBtn);
+    }
+    foot.appendChild(acts);
+    el.appendChild(foot);
+
+    return el.outerHTML;
   }
 
   window.toggleT=id=>{const t=tasks.find(t=>t.id===id);if(t){t.done=!t.done;save();renderProgress();renderTimeline();renderMain();}};

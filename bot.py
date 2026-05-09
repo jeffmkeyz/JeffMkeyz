@@ -137,3 +137,73 @@ if __name__ == "__main__":
     threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=PORT), daemon=True).start()
     log.info(f"Flask corriendo en puerto {PORT}")
     poll()
+
+# ─── TIKTOK OAUTH ───────────────────────────────────────────
+TIKTOK_CLIENT_KEY    = os.environ.get("TIKTOK_CLIENT_KEY", "")
+TIKTOK_CLIENT_SECRET = os.environ.get("TIKTOK_CLIENT_SECRET", "")
+TIKTOK_REDIRECT_URI  = "https://jeffmkeyz.github.io/JeffMkeyz/tiktok-callback.html"
+
+import urllib.parse, urllib.request, secrets, json as _json
+
+def init_tiktok_db():
+    conn = sqlite3.connect("users.db")
+    conn.execute("""CREATE TABLE IF NOT EXISTS tiktok_tokens (
+        user_id INTEGER PRIMARY KEY, access_token TEXT,
+        open_id TEXT, expires_at INTEGER,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+    conn.commit(); conn.close()
+
+@flask_app.route("/tiktok/auth_url")
+def tiktok_auth_url():
+    user_id = request.args.get("user_id")
+    if not user_id: return jsonify({"ok": False, "error": "user_id required"}), 400
+    state = secrets.token_hex(16) + f"_{user_id}"
+    params = {"client_key": TIKTOK_CLIENT_KEY, "response_type": "code",
+              "scope": "user.info.stats,user.info.profile,video.list",
+              "redirect_uri": TIKTOK_REDIRECT_URI, "state": state}
+    url = "https://www.tiktok.com/v2/auth/authorize/?" + urllib.parse.urlencode(params)
+    return jsonify({"ok": True, "url": url})
+
+@flask_app.route("/tiktok/callback", methods=["POST"])
+def tiktok_callback():
+    data = request.get_json()
+    code = data.get("code"); state = data.get("state")
+    if not code: return jsonify({"ok": False, "error": "No code"}), 400
+    try: user_id = int(state.split("_")[-1]) if state else 0
+    except: user_id = 0
+    payload = _json.dumps({"client_key": TIKTOK_CLIENT_KEY, "client_secret": TIKTOK_CLIENT_SECRET,
+        "code": code, "grant_type": "authorization_code", "redirect_uri": TIKTOK_REDIRECT_URI}).encode()
+    req = urllib.request.Request("https://open.tiktokapis.com/v2/oauth/token/",
+        data=payload, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req) as res: token_data = _json.loads(res.read())
+    except Exception as e: return jsonify({"ok": False, "error": str(e)}), 500
+    if "access_token" not in token_data: return jsonify({"ok": False, "error": "Token failed"}), 400
+    conn = sqlite3.connect("users.db")
+    conn.execute("INSERT OR REPLACE INTO tiktok_tokens (user_id,access_token,open_id,expires_at) VALUES (?,?,?,?)",
+        (user_id, token_data["access_token"], token_data.get("open_id",""), token_data.get("expires_in",86400)))
+    conn.commit(); conn.close()
+    return jsonify({"ok": True})
+
+@flask_app.route("/tiktok/stats")
+def tiktok_stats():
+    user_id = request.args.get("user_id", type=int)
+    if not user_id: return jsonify({"ok": False, "error": "user_id required"}), 400
+    conn = sqlite3.connect("users.db")
+    cur = conn.cursor()
+    cur.execute("SELECT access_token FROM tiktok_tokens WHERE user_id=?", (user_id,))
+    row = cur.fetchone(); conn.close()
+    if not row: return jsonify({"ok": False, "connected": False})
+    req = urllib.request.Request(
+        "https://open.tiktokapis.com/v2/user/info/?fields=display_name,follower_count,likes_count,video_count",
+        headers={"Authorization": f"Bearer {row[0]}"})
+    try:
+        with urllib.request.urlopen(req) as res:
+            data = _json.loads(res.read())
+        return jsonify({"ok": True, "connected": True, "data": data.get("data",{}).get("user",{})})
+    except Exception as e: return jsonify({"ok": False, "error": str(e)}), 500
+
+@flask_app.route("/tiktok/webhook", methods=["POST"])
+def tiktok_webhook():
+    log.info(f"TikTok webhook: {request.get_json()}")
+    return jsonify({"ok": True})

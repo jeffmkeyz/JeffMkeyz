@@ -1,0 +1,2492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Views Tracker · Artist Vault</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#030308; --panel:#0D0D1A; --card:#111120; --border:rgba(255,255,255,.06);
+  --gold:#FFB830; --green:#00F5A0; --fire:#FF2D78; --blue:#4fc3f7;
+  --purple:#7C3AFF; --text:#E0E0F0; --muted:#4A4A6A;
+  --mint:#00F5A0; --pink:#FF2D78;
+  /* Platform neon colors */
+  --spotify-neon:#1ed760; --amazon-neon:#ff9900;
+  --youtube-neon:#FF2D78; --tiktok-neon:#00F5A0;
+  --instagram-neon:#CC44FF; --manual-neon:#aaaaaa;
+  --apple-neon:#fc3158; --amazon-prime-neon:#00a8e0;
+}
+body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; min-height:100vh; padding-bottom:40px; }
+
+#bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+
+/* HEADER */
+.hdr {
+  padding:12px 16px 10px;
+  border-bottom:1px solid rgba(255,184,48,0.12);
+  background:rgba(3,3,8,0.92);
+  backdrop-filter:blur(16px);
+  box-shadow:0 1px 0 rgba(255,184,48,0.08), 0 4px 24px rgba(0,0,0,0.4);
+  text-align:center;
+}
+.hdr-title {
+  font-family:'Space Mono',monospace; font-size:11px; font-weight:700;
+  color:var(--muted); letter-spacing:3px; text-transform:uppercase;
+  margin-bottom:6px;
+}
+.hdr-hero { margin-bottom:14px; }
+.total-box { text-align:right; }
+.total-num {
+  font-family:'Space Mono',monospace; font-size:36px; font-weight:900;
+  background:linear-gradient(135deg,var(--gold),var(--pink));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  line-height:1; letter-spacing:1px;
+  filter:drop-shadow(0 0 16px rgba(245,197,24,0.35));
+}
+.total-lbl { font-size:9px; color:var(--muted); margin-top:4px; letter-spacing:1.5px; text-transform:uppercase; }
+.period-tabs { display:flex; gap:4px; }
+.ptab {
+  flex:1; padding:8px 2px; border-radius:10px;
+  border:1px solid var(--border); background:var(--card);
+  color:var(--muted); font-size:11px; font-weight:700;
+  cursor:pointer; text-align:center; transition:all 0.25s;
+  letter-spacing:0.5px;
+}
+.ptab.active {
+  background:rgba(245,197,24,0.1); color:var(--gold);
+  border-color:rgba(245,197,24,0.35);
+  box-shadow:0 0 12px rgba(245,197,24,0.15);
+}
+.ptab:active { transform:scale(0.94); }
+
+/* METRIC PILLS */
+.metric-row { display:flex; gap:6px; overflow-x:auto; padding:10px 16px 6px; scrollbar-width:none; position:relative; z-index:1; }
+.metric-row::-webkit-scrollbar { display:none; }
+.mpill {
+  flex-shrink:0; padding:7px 16px; border-radius:100px;
+  font-size:12px; font-weight:700; border:1px solid var(--border);
+  background:var(--card); color:var(--muted); cursor:pointer; transition:all 0.2s;
+  letter-spacing:0.3px;
+}
+.mpill.active { color:#000; border-color:transparent; box-shadow:0 0 16px currentColor; }
+.mpill:active { transform:scale(0.92); }
+
+/* PLATFORM PILLS */
+.plat-row { display:flex; gap:6px; overflow-x:auto; padding:4px 16px 10px; scrollbar-width:none; position:relative; z-index:1; }
+.plat-row::-webkit-scrollbar { display:none; }
+.ppill {
+  flex-shrink:0; padding:7px 16px; border-radius:100px;
+  font-size:12px; font-weight:700; border:1px solid var(--border);
+  background:var(--card); color:var(--muted); cursor:pointer; transition:all 0.2s;
+}
+.ppill.active { color:#000; border-color:transparent; box-shadow:0 0 18px rgba(0,0,0,0.3); }
+.ppill:active { transform:scale(0.92); }
+.ppill.toggled { opacity:1; }
+.ppill.toggled-off { opacity:0.32; filter:grayscale(0.6); }
+.toggle-row { display:flex; gap:5px; overflow-x:auto; padding:0 16px 8px; scrollbar-width:none; }
+.toggle-row::-webkit-scrollbar { display:none; }
+.tpill {
+  display:flex; align-items:center; gap:5px; padding:4px 10px;
+  border-radius:100px; font-size:11px; font-weight:700; cursor:pointer;
+  border:1.5px solid; white-space:nowrap; transition:all 0.2s; flex-shrink:0;
+  user-select:none;
+}
+.tpill.on  { color:#000; }
+.tpill.off { opacity:0.35; filter:grayscale(0.5); background:transparent !important; }
+
+/* CHART */
+.chart-section { padding:8px 16px 6px; position:relative; z-index:1; }
+.chart-scrollbar { padding:2px 16px 6px; }
+.chart-scroll-track {
+  height:6px; background:#1A1A2E; border-radius:3px; position:relative; cursor:pointer;
+}
+.chart-scroll-thumb {
+  position:absolute; top:0; height:100%; background:#ffd700;
+  border-radius:3px; cursor:grab; min-width:24px; opacity:0.7;
+  transition:opacity 0.2s;
+}
+.chart-scroll-thumb:active { cursor:grabbing; opacity:1; }
+canvas#chart {
+  width:100%; border-radius:16px; display:block;
+  background:var(--panel); border:1px solid var(--border);
+  touch-action:none;
+  box-shadow:inset 0 0 40px rgba(0,0,0,0.4);
+}
+.tooltip {
+  position:absolute; background:rgba(10,12,24,0.95);
+  border:1px solid rgba(245,197,24,0.4); border-radius:10px;
+  padding:5px 10px; pointer-events:none; z-index:20; display:none;
+  white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+  display:none; align-items:center; gap:6px;
+}
+.tt-date { font-size:10px; color:var(--muted); }
+.tt-val  { font-size:13px; font-weight:900; }
+.tt-earn { font-size:10px; color:var(--green); font-weight:700; }
+.crosshair { position:absolute; top:8px; bottom:6px; width:1px; background:rgba(245,197,24,0.45); pointer-events:none; display:none; box-shadow:0 0 8px rgba(245,197,24,0.3); }
+.chart-dot { position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 8px currentColor, 0 0 16px currentColor; z-index:10; }
+/* SUPPORT LINES TOGGLE */
+.support-row { display:flex; align-items:center; gap:5px; overflow-x:auto; padding:6px 16px 4px; scrollbar-width:none; position:relative; z-index:1; }
+.support-row::-webkit-scrollbar { display:none; }
+.sline-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; flex-shrink:0; }
+.slpill {
+  display:flex; align-items:center; gap:4px; padding:4px 9px;
+  border-radius:100px; font-size:10px; font-weight:700; cursor:pointer; flex-shrink:0;
+  border:1.5px solid; white-space:nowrap; transition:all 0.18s; user-select:none;
+}
+.slpill.on  { color:#000; }
+.slpill.off { opacity:0.3; filter:grayscale(0.6); background:transparent !important; }
+.slpill:active { transform:scale(0.9); }
+
+/* EARNINGS */
+.earn-box {
+  margin:10px 16px; border-radius:16px; padding:16px;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+  text-align:center; position:relative; z-index:1;
+  background:linear-gradient(135deg,rgba(0,230,118,0.08),rgba(0,188,212,0.05));
+  border:1px solid rgba(0,230,118,0.2);
+  box-shadow:0 0 30px rgba(0,230,118,0.06), inset 0 0 20px rgba(0,0,0,0.2);
+  animation:fadeSlideIn 0.4s ease;
+}
+@keyframes fadeSlideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.earn-item .earn-n {
+  font-family:'Space Mono',monospace; font-size:15px; font-weight:900;
+  color:var(--green); text-shadow:0 0 12px rgba(0,230,118,0.5);
+}
+.earn-item .earn-l { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; margin-top:4px; }
+
+/* STATS */
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:8px 16px; position:relative; z-index:1; }
+.stat-card {
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:12px; text-align:center; transition:all 0.2s;
+  box-shadow:inset 0 0 20px rgba(0,0,0,0.3);
+}
+.stat-card:active { transform:scale(0.95); border-color:rgba(245,197,24,0.3); box-shadow:0 0 16px rgba(245,197,24,0.1); }
+.stat-n { font-family:'Space Mono',monospace; font-size:14px; font-weight:900; color:var(--gold); text-shadow:0 0 10px rgba(245,197,24,0.3); }
+.stat-l { font-size:9px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+
+/* BOTTOM TABS */
+.bottom-tabs {
+  display:flex; gap:0; margin-top:10px;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  background:rgba(3,3,8,0.9); backdrop-filter:blur(10px);
+  position:sticky; top:0; z-index:10;
+}
+.btab {
+  flex:1; padding:13px 4px; text-align:center; font-size:12px; font-weight:700;
+  color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all 0.25s;
+  letter-spacing:0.3px;
+}
+.btab.active { color:var(--gold); border-bottom-color:var(--gold); text-shadow:0 0 10px rgba(245,197,24,0.4); }
+
+/* TAB CONTENT */
+.btab-content { display:none; position:relative; z-index:1; }
+.btab-content.active { display:block; }
+
+/* IMPORT CARDS */
+.import-card {
+  border-radius:16px; padding:16px; margin:12px 16px 0;
+  position:relative; overflow:hidden;
+}
+.import-card::before {
+  content:''; position:absolute; inset:0; border-radius:16px;
+  padding:1px; background:linear-gradient(135deg,var(--neon1,transparent),var(--neon2,transparent));
+  -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  pointer-events:none;
+}
+.import-card.spotify  { background:linear-gradient(135deg,rgba(30,215,96,0.07),rgba(10,12,24,0.9)); border:1px solid rgba(30,215,96,0.25); box-shadow:0 0 30px rgba(30,215,96,0.06); }
+.import-card.amazon   { background:linear-gradient(135deg,rgba(255,153,0,0.07),rgba(10,12,24,0.9)); border:1px solid rgba(255,153,0,0.25); box-shadow:0 0 30px rgba(255,153,0,0.06); }
+.import-card.songs    { background:linear-gradient(135deg,rgba(176,106,252,0.07),rgba(10,12,24,0.9)); border:1px solid rgba(176,106,252,0.25); box-shadow:0 0 30px rgba(176,106,252,0.06); }
+.import-label {
+  display:block; width:100%; padding:12px; border-radius:12px;
+  text-align:center; cursor:pointer; font-size:13px; font-weight:700;
+  transition:all 0.2s;
+}
+.import-label:active { transform:scale(0.97); }
+.import-label.spotify { background:rgba(30,215,96,0.08); border:1px dashed rgba(30,215,96,0.4); color:#1ed760; }
+.import-label.amazon  { background:rgba(255,153,0,0.08); border:1px dashed rgba(255,153,0,0.4); color:#ff9900; }
+.import-label.songs   { background:rgba(176,106,252,0.08); border:1px dashed rgba(176,106,252,0.4); color:#b06afc; }
+.import-status { font-size:10px; color:var(--muted); text-align:center; margin-top:8px; letter-spacing:0.3px; }
+.btn-clear {
+  width:100%; margin-top:8px; padding:9px; background:transparent;
+  border:1px solid rgba(255,77,77,0.2); border-radius:10px;
+  color:rgba(255,77,77,0.5); font-size:12px; font-weight:700; cursor:pointer;
+  transition:all 0.2s;
+}
+.btn-clear:active { border-color:var(--fire); color:var(--fire); }
+
+/* ADD FORM */
+.add-card-mini { margin:8px 16px 0; }
+.add-toggle {
+  background:transparent; border:1px solid var(--border); border-radius:10px;
+  padding:7px 14px; color:var(--muted); font-size:11px; font-weight:600;
+  cursor:pointer; letter-spacing:0.5px; transition:all 0.15s;
+}
+.add-toggle:active { opacity:0.7; }
+.add-row { display:flex; gap:8px; margin-bottom:10px; }
+.add-input {
+  flex:1; background:rgba(24,27,46,0.8); border:1px solid var(--border);
+  border-radius:10px; padding:8px 10px; color:var(--text);
+  font-size:13px; font-weight:700; outline:none; min-width:0;
+  transition:border-color 0.2s;
+}
+.add-input[type=date] { color-scheme:dark; font-size:12px; }
+.add-input:focus { border-color:rgba(245,197,24,0.4); }
+.btn-add-sm {
+  padding:8px 16px; border:none; border-radius:10px;
+  background:linear-gradient(135deg,var(--gold),#ff8c00);
+  font-size:16px; font-weight:900; color:#000; cursor:pointer;
+  transition:transform 0.1s; flex-shrink:0;
+}
+.btn-add-sm:active { transform:scale(0.94); }
+
+/* HISTORY */
+.hist-list { padding:10px 16px; }
+.hist-item {
+  display:flex; align-items:center; gap:8px; padding:11px 14px;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  margin-bottom:7px; transition:all 0.2s; position:relative; overflow:hidden;
+}
+.hist-item::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  border-radius:2px 0 0 2px; background:var(--plat-color,var(--border));
+  box-shadow:0 0 8px var(--plat-color,transparent);
+}
+.hist-item:active { transform:scale(0.98); border-color:rgba(245,197,24,0.2); }
+.hist-date { font-size:11px; color:var(--muted); min-width:60px; margin-left:6px; }
+.hist-plat { font-size:16px; }
+.hist-val  { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:var(--gold); margin-left:auto; }
+.hist-earn { font-size:10px; color:var(--green); font-weight:700; text-shadow:0 0 8px rgba(0,230,118,0.4); }
+.hist-chg.up { color:var(--green); font-size:10px; font-weight:700; }
+.hist-chg.dn { color:var(--fire); font-size:10px; font-weight:700; }
+.hist-del  { color:rgba(74,79,106,0.6); font-size:14px; cursor:pointer; padding:2px 6px; transition:color 0.2s; }
+.hist-del:active { color:var(--fire); }
+
+/* SONGS */
+.songs-sort { display:flex; gap:6px; padding:12px 16px 8px; }
+.ssort-btn {
+  flex:1; padding:8px; border-radius:10px; border:1px solid var(--border);
+  background:var(--card); color:var(--muted); font-size:11px; font-weight:700;
+  cursor:pointer; text-align:center; transition:all 0.2s;
+}
+.ssort-btn.active {
+  background:rgba(176,106,252,0.1); color:var(--purple);
+  border-color:rgba(176,106,252,0.35); box-shadow:0 0 14px rgba(176,106,252,0.1);
+}
+.ssort-btn:active { transform:scale(0.94); }
+.song-item {
+  display:flex; align-items:center; gap:12px; padding:13px 16px;
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  margin:0 16px 8px; transition:all 0.2s; position:relative; overflow:hidden;
+}
+.song-item:nth-child(1) { border-color:rgba(245,197,24,0.3); box-shadow:0 0 20px rgba(245,197,24,0.06); }
+.song-item:nth-child(2) { border-color:rgba(170,170,170,0.2); box-shadow:0 0 16px rgba(170,170,170,0.04); }
+.song-item:nth-child(3) { border-color:rgba(205,127,50,0.2); box-shadow:0 0 16px rgba(205,127,50,0.04); }
+.song-item:active { transform:scale(0.98); }
+.song-rank { font-size:16px; min-width:26px; text-align:center; font-weight:900; }
+.song-rank.gold   { color:var(--gold); text-shadow:0 0 12px rgba(245,197,24,0.5); }
+.song-rank.silver { color:#aaa; text-shadow:0 0 10px rgba(170,170,170,0.4); }
+.song-rank.bronze { color:#cd7f32; text-shadow:0 0 10px rgba(205,127,50,0.4); }
+.song-rank.other  { color:var(--muted); font-size:11px; }
+.song-info { flex:1; min-width:0; }
+.song-name { font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.song-bar-wrap { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; margin:6px 0 4px; overflow:hidden; }
+.song-bar { height:3px; border-radius:2px; background:linear-gradient(90deg,#b06afc,#ce93d8); transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 0 6px rgba(176,106,252,0.5); }
+.song-meta { font-size:11px; font-weight:700; color:var(--text); opacity:0.5; margin-top:5px; letter-spacing:0.5px; }
+.song-year-badge { display:inline-block; font-size:9px; font-weight:800; letter-spacing:1px;
+  background:rgba(176,106,252,0.12); color:#b06afc; border:1px solid rgba(176,106,252,0.25);
+  border-radius:6px; padding:1px 6px; }
+.song-streams { font-family:'Space Mono',monospace; font-size:14px; font-weight:900; color:var(--gold); text-shadow:0 0 10px rgba(245,197,24,0.3); }
+.song-saves { font-size:10px; color:var(--muted); margin-top:2px; }
+
+/* SECTION LABEL */
+.sec-label { padding:14px 16px 6px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; font-weight:700; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+  background:rgba(240,237,232,0.95); color:#000; padding:12px 22px;
+  border-radius:100px; font-size:13px; font-weight:800; z-index:999;
+  transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(245,197,24,0.2);
+  backdrop-filter:blur(10px);
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+
+.empty-state { text-align:center; padding:36px 20px; color:var(--muted); font-size:13px; line-height:2; }
+.pay-import-card {
+  display:flex; align-items:center; gap:10px;
+  margin:0 16px 6px; padding:10px 12px; border-radius:12px;
+  background:var(--card); border:1px solid var(--border);
+  transition:border-color 0.2s;
+}
+.pay-import-card.loaded { border-color:rgba(0,230,118,0.3); }
+/* PAGOS */
+.pagos-header { padding:14px 16px 6px; }
+.pagos-total {
+  margin:0 16px 10px; border-radius:16px; padding:16px;
+  display:grid; grid-template-columns:repeat(2,1fr); gap:10px; text-align:center;
+  background:linear-gradient(135deg,rgba(0,230,118,0.08),rgba(0,188,212,0.05));
+  border:1px solid rgba(0,230,118,0.2);
+  box-shadow:0 0 30px rgba(0,230,118,0.06), inset 0 0 20px rgba(0,0,0,0.2);
+  animation:fadeSlideIn 0.4s ease;
+}
+.pagos-total .earn-n { font-family:'Space Mono',monospace; font-size:16px; font-weight:900; color:var(--green); text-shadow:0 0 12px rgba(0,230,118,0.5); }
+.pagos-total .earn-l { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; margin-top:4px; }
+.pago-item {
+  margin:0 16px 8px; border-radius:16px; padding:14px 16px;
+  background:var(--card); border:1px solid var(--border);
+  position:relative; overflow:hidden; transition:all 0.2s;
+  box-shadow:inset 0 0 20px rgba(0,0,0,0.3);
+}
+.pago-item.pendiente { border-left:3px solid var(--gold); }
+.pago-item.proximo   { border-left:3px solid #4fc3f7; }
+.pago-item.pagado    { border-left:3px solid var(--green); opacity:0.75; }
+.pago-row1 { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.pago-mes  { font-size:12px; font-weight:800; color:var(--text); }
+.pago-amt  { font-family:'Space Mono',monospace; font-size:15px; font-weight:900; color:var(--green); text-shadow:0 0 10px rgba(0,230,118,0.4); }
+.pago-row2 { display:flex; justify-content:space-between; align-items:center; }
+.pago-info { font-size:10px; color:var(--muted); }
+.pago-badge {
+  font-size:9px; font-weight:800; padding:3px 8px; border-radius:100px;
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.pago-badge.pendiente { background:rgba(245,197,24,0.12); color:var(--gold); border:1px solid rgba(245,197,24,0.3); }
+.pago-badge.proximo   { background:rgba(79,195,247,0.12); color:#4fc3f7;    border:1px solid rgba(79,195,247,0.3); }
+.pago-badge.pagado    { background:rgba(0,230,118,0.12);  color:var(--green);border:1px solid rgba(0,230,118,0.3); }
+.pago-plat { font-size:14px; margin-right:4px; }
+
+/* EARNINGS TAB */
+.earn-total-box {
+  margin:10px 16px 6px; padding:18px; border-radius:16px; text-align:center;
+  background:linear-gradient(135deg,rgba(0,230,118,0.1),rgba(10,12,24,0.9));
+  border:1px solid rgba(0,230,118,0.25); box-shadow:0 0 30px rgba(0,230,118,0.06);
+  animation:fadeSlideIn 0.4s ease;
+}
+.earn-total-n { font-family:'Space Mono',monospace; font-size:28px; font-weight:900;
+  color:var(--green); text-shadow:0 0 20px rgba(0,230,118,0.5); }
+.earn-total-l { font-size:10px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
+.earn-month-item {
+  display:flex; align-items:center; gap:10px; padding:13px 16px;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  margin:0 16px 8px; position:relative; overflow:hidden;
+}
+.earn-month-item::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  border-radius:2px 0 0 2px; background:var(--green); box-shadow:0 0 8px rgba(0,230,118,0.4);
+}
+.earn-month-label { font-size:12px; font-weight:700; color:var(--text); min-width:72px; margin-left:6px; }
+.earn-month-bar-wrap { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.earn-month-bar { height:4px; border-radius:2px;
+  background:linear-gradient(90deg,var(--green),#69f0ae);
+  box-shadow:0 0 6px rgba(0,230,118,0.5); transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+.earn-month-val { font-family:'Space Mono',monospace; font-size:13px; font-weight:900;
+  color:var(--green); text-shadow:0 0 8px rgba(0,230,118,0.4); min-width:60px; text-align:right; }
+.earn-song-item {
+  display:flex; align-items:center; gap:10px; padding:11px 16px;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  margin:0 16px 6px;
+}
+.earn-song-name { flex:1; font-size:12px; font-weight:700; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.earn-song-val { font-family:'Space Mono',monospace; font-size:12px; font-weight:900;
+  color:var(--gold); text-shadow:0 0 8px rgba(245,197,24,0.3); }
+.earn-sec-label { padding:12px 16px 6px; font-size:10px; color:var(--muted);
+  text-transform:uppercase; letter-spacing:1.5px; font-weight:700; }
+.songs-summary {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+  margin:10px 16px 4px; animation:fadeSlideIn 0.4s ease;
+}
+.ss-card {
+  background:linear-gradient(135deg,rgba(176,106,252,0.08),rgba(10,12,24,0.9));
+  border:1px solid rgba(176,106,252,0.2); border-radius:12px;
+  padding:12px; text-align:center;
+}
+.ss-n { font-family:'Space Mono',monospace; font-size:14px; font-weight:900; color:#b06afc;
+  text-shadow:0 0 10px rgba(176,106,252,0.4); }
+.ss-l { font-size:9px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:0.8px; }
+</style>
+</head>
+<body>
+<div style="position:sticky;top:0;z-index:200;background:rgba(3,3,8,.96);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06);padding:13px 18px;display:flex;align-items:center;gap:10px;">
+  <div onclick="(function(){const tg=window.Telegram?.WebApp;if(tg)tg.close();else history.back();})()" style="width:30px;height:30px;border-radius:8px;background:#0D0D1A;border:1px solid rgba(255,255,255,.06);color:#4A4A6A;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">←</div>
+  <div style="flex:1;">
+    <div style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:#00F5A0;">◈ ANÁLISIS · FREE</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;font-family:'Syne',sans-serif;">Views Tracker</div>
+  </div>
+</div>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="hdr">
+  <div class="hdr-title">📊 VIEWS TRACKER</div>
+  <div class="hdr-hero">
+    <div class="total-num" id="total-views">—</div>
+    <div class="total-lbl" id="total-lbl">total período</div>
+  </div>
+  <div class="period-tabs">
+    <div class="ptab active" onclick="setPeriod(7,this)">7D</div>
+    <div class="ptab" onclick="setPeriod(28,this)">28D</div>
+    <div class="ptab" onclick="setPeriod(90,this)">3M</div>
+    <div class="ptab" onclick="setPeriod(180,this)">6M</div>
+    <div class="ptab" onclick="setPeriod(365,this)">1A</div>
+    <div class="ptab" onclick="setPeriod(730,this)">2A</div>
+    <div class="ptab" onclick="setPeriod(1095,this)">3A</div>
+  </div>
+</div>
+
+<div class="plat-row"   id="plat-row"></div>
+<div class="metric-row" id="metric-row"></div>
+<div class="toggle-row" id="toggle-row" style="display:none"></div>
+
+<div class="chart-section">
+  <canvas id="chart" height="180"></canvas>
+  <div class="crosshair" id="crosshair"></div>
+  <div class="chart-dot" id="chart-dot"></div>
+  <div class="tooltip" id="tooltip">
+    <span class="tt-date" id="tt-date"></span>
+    <span class="tt-val"  id="tt-val"></span>
+    <span class="tt-earn" id="tt-earn"></span>
+  </div>
+</div>
+
+<!-- Scrollbar de navegación del gráfico -->
+<div class="chart-scrollbar" id="chart-scrollbar" style="display:none">
+  <div class="chart-scroll-track" id="scroll-track">
+    <div class="chart-scroll-thumb" id="scroll-thumb"></div>
+  </div>
+</div>
+
+<!-- Líneas de soporte toggles -->
+<div class="support-row" id="support-row">
+  <span class="sline-lbl">Líneas:</span>
+</div>
+
+<div class="earn-box" id="earn-box" style="display:none">
+  <div class="earn-item"><div class="earn-n" id="e-day">$0</div><div class="earn-l">☀️ Diario</div></div>
+  <div class="earn-item"><div class="earn-n" id="e-month">$0</div><div class="earn-l">📅 Mensual</div></div>
+  <div class="earn-item"><div class="earn-n" id="e-year">$0</div><div class="earn-l">📆 Anual</div></div>
+  <div id="earn-note" style="display:none;grid-column:1/-1;font-size:10px;color:rgba(255,167,38,0.8);text-align:center;padding-top:2px;letter-spacing:0.3px"></div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-n" id="st-avg">—</div><div class="stat-l" id="st-avg-lbl">Promedio</div></div>
+  <div class="stat-card"><div class="stat-n" id="st-max">—</div><div class="stat-l" id="st-max-lbl">Mejor día</div></div>
+  <div class="stat-card"><div class="stat-n" id="st-growth">—</div><div class="stat-l" id="st-growth-lbl">Crecimiento</div></div>
+</div>
+
+<!-- BOTTOM TABS -->
+<div class="bottom-tabs">
+  <div class="btab active" onclick="showBTab('import',this)">📥 Datos</div>
+  <div class="btab" onclick="showBTab('history',this)">📋 Historial</div>
+  <div class="btab" onclick="showBTab('songs',this)">🎵 Top Songs</div>
+  <div class="btab" onclick="showBTab('pagos',this)">📅 Pagos</div>
+</div>
+
+<!-- TAB: DATOS — hidden import cards (keep inputs alive for file API) -->
+<div style="position:fixed;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden">
+  <input type="file" accept=".csv" id="spotify-csv"      onchange="importSpotifyCSV(this)">
+  <input type="file" accept=".csv" id="amazon-csv"       onchange="importAmazonCSV(this)">
+  <input type="file" accept=".csv" id="amazon-prime-csv" onchange="importAmazonPrimeCSV(this)">
+  <input type="file" accept=".csv" id="apple-csv"        onchange="importAppleCSV(this)">
+  <input type="file" accept=".csv" id="youtube-csv"      onchange="importYouTubeCSV(this)">
+  <input type="file" accept=".csv" id="pay-spotify-csv"      onchange="importPaymentCSV(this,'spotify')">
+  <input type="file" accept=".csv" id="pay-amazon-csv"       onchange="importPaymentCSV(this,'amazon')">
+  <input type="file" accept=".csv" id="pay-amazon_prime-csv" onchange="importPaymentCSV(this,'amazon_prime')">
+  <input type="file" accept=".csv" id="pay-apple-csv"        onchange="importPaymentCSV(this,'apple')">
+  <input type="file" accept=".csv" id="pay-youtube-csv"      onchange="importPaymentCSV(this,'youtube')">
+  <div id="spotify-status"></div>
+  <div id="amazon-status"></div>
+  <div id="amazon-prime-status"></div>
+  <div id="apple-status"></div>
+  <div id="youtube-status"></div>
+  <div id="pay-status-spotify"></div>
+  <div id="pay-status-amazon"></div>
+  <div id="pay-status-amazon_prime"></div>
+  <div id="pay-status-apple"></div>
+  <div id="pay-status-youtube"></div>
+</div>
+
+<!-- TAB: DATOS -->
+<div class="btab-content active" id="btab-import">
+  <div id="datos-panel"></div>
+
+
+  <!-- ADD MANUAL (colapsable) -->
+  <div class="add-card-mini">
+    <button class="add-toggle" onclick="toggleAddForm(this)">✏️ Añadir manualmente</button>
+    <div class="add-form-body" id="add-form-body" style="display:none">
+      <div class="add-row" style="margin-top:8px">
+        <input class="add-input" type="date" id="inp-date">
+        <input class="add-input" type="number" id="inp-views" placeholder="Valor" min="0" style="max-width:100px">
+        <button class="btn-add-sm" onclick="addEntry()">+</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB: HISTORIAL -->
+<div class="btab-content" id="btab-history">
+  <div style="padding:12px 16px 8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Registros recientes</div>
+  <div id="hist-list" class="hist-list"></div>
+</div>
+
+<!-- TAB: TOP SONGS -->
+<div class="btab-content" id="btab-songs">
+  <div class="import-card songs" style="margin-top:12px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:22px">🎤</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--purple)">Top Canciones</div>
+        <div style="font-size:10px;color:var(--muted)">songs-28day.csv · songs-1year.csv</div>
+      </div>
+    </div>
+    <label class="import-label songs">
+      📁 Importar CSV de canciones
+      <input type="file" accept=".csv" id="songs-csv" style="display:none" onchange="importSongsCSV(this)">
+    </label>
+    <div class="import-status" id="songs-status">Sube songs-28day.csv o songs-1year.csv</div>
+    <button class="btn-clear" onclick="clearSongs()">🗑️ Limpiar ranking</button>
+  </div>
+  <div class="songs-sort" id="songs-sort-row" style="display:none">
+    <button class="ssort-btn active" onclick="setSongsSort('streams',this)">🎧 Streams</button>
+    <button class="ssort-btn" onclick="setSongsSort('listeners',this)">👥 Oyentes</button>
+    <button class="ssort-btn" onclick="setSongsSort('saves',this)">💾 Saves</button>
+  </div>
+  <div id="songs-summary"></div>
+  <div id="songs-list"></div>
+</div>
+
+<!-- TAB: INGRESOS -->
+<div class="btab-content" id="btab-pagos">
+  <div id="pagos-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor("#07080d"); tg.setBackgroundColor("#07080d"); }
+
+const USER_ID  = tg?.initDataUnsafe?.user?.id || "guest";
+
+// ── BG CANVAS ────────────────────────────────────────────
+const bgC = document.getElementById("bg-canvas");
+const bgCtx = bgC.getContext("2d");
+function resizeBg() {
+  bgC.width=innerWidth; bgC.height=innerHeight;
+  const g=bgCtx.createRadialGradient(bgC.width*0.5,0,0,bgC.width*0.5,bgC.height,bgC.height);
+  g.addColorStop(0,"rgba(245,197,24,0.03)");
+  g.addColorStop(1,"rgba(6,8,16,0)");
+  bgCtx.clearRect(0,0,bgC.width,bgC.height);
+  bgCtx.fillStyle=g; bgCtx.fillRect(0,0,bgC.width,bgC.height);
+}
+resizeBg(); window.addEventListener("resize", resizeBg);
+
+// ── PLATFORMS ─────────────────────────────────────────────
+const PLATFORMS = [
+  { id:"all",           label:"Todo",          emoji:"🌐", color:"#aaa",    rate:0 },
+  { id:"spotify",       label:"Spotify",       emoji:"🎵", color:"#1db954", rate:0.000666 },
+  { id:"amazon",        label:"Amazon Music",  emoji:"📦", color:"#ff9900", rate:0.010574 },
+  { id:"amazon_prime",  label:"Amazon Prime",  emoji:"🔵", color:"#00a8e0", rate:0.001343 },
+  { id:"apple",         label:"Apple Music",   emoji:"🍎", color:"#fc3c44", rate:0.005738 },
+  { id:"youtube",       label:"YouTube",       emoji:"▶️",  color:"#ff0000", rate:0.007440 },
+  { id:"manual",        label:"Manual",        emoji:"✏️",  color:"#aaa",    rate:0 },
+];
+
+const METRICS = [
+  { id:"streams",      label:"Reproducciones", color:"#f5c518", emoji:"🎧" },
+  { id:"listeners",    label:"Oyentes/día",    color:"#00e676", emoji:"👥" },
+  { id:"monthly",      label:"Oyentes mes",    color:"#4fc3f7", emoji:"📅" },
+  { id:"followers",    label:"Seguidores",     color:"#e91e63", emoji:"❤️" },
+  { id:"saves",        label:"Saves",          color:"#b06afc", emoji:"💾" },
+  { id:"playlist_adds",label:"Playlist Adds",  color:"#4fc3f7", emoji:"➕" },
+];
+
+let entries       = [];  // [{date, platform, streams, listeners, monthly, followers, saves, views}]
+let songs         = [];
+let payments      = [];  // [{reporting_date, sale_month, platform, streams, earnings}]
+let currentPeriod = 7;
+let currentMetric = "streams";
+let selPlatform   = "all";
+let activePlats   = new Set(); // which platforms are visible in Todo mode
+let zoomStart=0, zoomEnd=Infinity;
+function zoomReset(){ zoomStart=0; zoomEnd=Infinity; updateScrollbar?.(); }
+function getZoomed(data){ const e=zoomEnd===Infinity?data.length-1:Math.min(zoomEnd,data.length-1); return data.slice(zoomStart,e+1); }
+let supportLines = { avg:true, max:true, min:false, trend:false };
+let songsSortBy   = "streams";
+
+// ── SUPPORT LINES ─────────────────────────────────────────
+const SUPPORT_DEFS = [
+  { key:"avg",   label:"AVG",    color:"#f5c518", dash:true  },
+  { key:"max",   label:"MAX",    color:"#00e676", dash:true  },
+  { key:"min",   label:"MIN",    color:"#ff4d4d", dash:true  },
+  { key:"trend", label:"TREND",  color:"#b06afc", dash:false },
+];
+// Snapshot metrics: show last value as "total", not sum
+const SNAPSHOT_METRICS = ["followers","monthly"];
+
+// ── BUILD PILLS ───────────────────────────────────────────
+function buildPills() {
+  // Metric pills
+  const mRow = document.getElementById("metric-row");
+  mRow.innerHTML = "";
+  // Spotify-only metrics (not available for other platforms)
+  const spotifyOnly=["listeners","monthly","followers","saves","playlist_adds"];
+  const isSpotify=selPlatform==="spotify";
+
+  // If current metric is spotify-only but spotify not selected, reset to streams
+  if (!isSpotify && spotifyOnly.includes(currentMetric)) currentMetric="streams";
+
+  METRICS.forEach(m => {
+    // Hide spotify-only metrics when not on spotify
+    if (spotifyOnly.includes(m.id) && !isSpotify) return;
+    const pill = document.createElement("div");
+    pill.className = "mpill" + (m.id===currentMetric?" active":"");
+    pill.textContent = m.emoji+" "+m.label;
+    if (m.id===currentMetric) { pill.style.background=m.color; pill.style.color="#000"; }
+    pill.onclick = () => {
+      document.querySelectorAll(".mpill").forEach(p=>{ p.classList.remove("active"); p.style.background=""; p.style.color=""; });
+      pill.classList.add("active"); pill.style.background=m.color; pill.style.color="#000";
+      currentMetric=m.id; render();
+      if (tg) tg.HapticFeedback?.impactOccurred("light");
+    };
+    mRow.appendChild(pill);
+  });
+  // Platform pills
+  const pRow = document.getElementById("plat-row");
+  pRow.innerHTML = "";
+  const tRow = document.getElementById("toggle-row");
+
+  // Platforms that have data loaded
+
+  PLATFORMS.forEach(p => {
+    if (p.id==="manual") return; // Manual: in Datos tab, not a pill
+    const pill = document.createElement("div");
+    const isActive = p.id===selPlatform;
+    pill.className = "ppill" + (isActive?" active":"");
+    pill.textContent = p.emoji+" "+p.label;
+    if (isActive) { pill.style.background=p.color; pill.style.color="#000"; }
+    pill.onclick = () => {
+      document.querySelectorAll(".ppill").forEach(x=>{ x.classList.remove("active"); x.style.background=""; x.style.color=""; });
+      pill.classList.add("active"); pill.style.background=p.color; pill.style.color="#000";
+      selPlatform=p.id; activePlats.clear(); zoomReset(); buildPills(); render();
+      if(document.getElementById("btab-import")?.classList.contains("active")) renderDatosPanel();
+      if (tg) tg.HapticFeedback?.impactOccurred("light");
+    };
+    pRow.appendChild(pill);
+  });
+
+  // Toggle row — mostrar TODAS las plataformas con datos cargados
+  const toggleable = PLATFORMS.filter(p=>p.id!=="all"&&p.id!=="manual"&&entries.some(e=>e.platform===p.id));
+  if (selPlatform==="all" && toggleable.length>=1) {
+    // Init: activar solo plataformas diarias (no-noSpike) por defecto
+    if (!activePlats.size) {
+      const defaults = toggleable.filter(p=>!NOSPIKE_PLATS.includes(p.id));
+      (defaults.length ? defaults : toggleable).forEach(p=>activePlats.add(p.id));
+    }
+    tRow.innerHTML = '<span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;align-self:center;padding-right:4px">Mostrar:</span>';
+    toggleable.forEach(p => {
+      const on = activePlats.has(p.id);
+      const t = document.createElement("div");
+      t.className = "tpill "+(on?"on":"off");
+      t.dataset.platId = p.id;
+      t.style.borderColor = p.color;
+      t.style.background  = on ? p.color : "transparent";
+      t.style.color       = on ? "#000" : p.color;
+      t.textContent = p.emoji+" "+p.label;
+      t.onclick = () => {
+        if (activePlats.has(p.id)) { activePlats.delete(p.id); }
+        else { activePlats.add(p.id); }
+        rebuildToggleRow(); render();
+        if (tg) tg.HapticFeedback?.impactOccurred("light");
+      };
+      tRow.appendChild(t);
+    });
+    tRow.style.display = "flex";
+  } else {
+    tRow.style.display = "none";
+    activePlats.clear();
+  }
+}
+
+// ── SOPORTE LINES TOGGLE ROW ──────────────────────────────
+function buildSupportRow() {
+  const row = document.getElementById("support-row");
+  if (!row) return;
+  row.innerHTML = '<span class="sline-lbl">Líneas:</span>';
+  SUPPORT_DEFS.forEach(def => {
+    const on = supportLines[def.key];
+    const pill = document.createElement("div");
+    pill.className = "slpill " + (on ? "on" : "off");
+    pill.dataset.skey = def.key;
+    pill.style.borderColor = def.color;
+    pill.style.background  = on ? def.color : "transparent";
+    pill.style.color       = on ? "#000"    : def.color;
+    pill.textContent = def.label;
+    pill.onclick = () => {
+      supportLines[def.key] = !supportLines[def.key];
+      buildSupportRow();
+      const d = getFiltered(); drawChart(getZoomed(d)); updateScrollbar();
+      if (tg) tg.HapticFeedback?.impactOccurred("light");
+    };
+    row.appendChild(pill);
+  });
+}
+
+// Actualiza solo el estado visual de los toggles sin reconstruir el DOM
+function rebuildToggleRow() {
+  const tRow = document.getElementById("toggle-row");
+  tRow.querySelectorAll(".tpill").forEach(t => {
+    const pid = t.dataset.platId;
+    if (!pid) return;
+    const on = activePlats.has(pid);
+    const plat = PLATFORMS.find(p=>p.id===pid);
+    if (!plat) return;
+    t.className = "tpill "+(on?"on":"off");
+    t.style.background = on ? plat.color : "transparent";
+    t.style.color      = on ? "#000" : plat.color;
+  });
+}
+// ── PERSISTENCIA VÍA API ─────────────────────────────────
+const API_BASE = "";  // mismo dominio
+let _saveTimer = null;
+
+async function load() {
+  if (USER_ID === "guest") {
+    // Sin Telegram: intentar sessionStorage como fallback
+    try { const l=sessionStorage.getItem("views_entries"); if(l) entries=JSON.parse(l); } catch(e){}
+    try { const l=sessionStorage.getItem("views_songs");   if(l) songs=JSON.parse(l);   } catch(e){}
+    try { const l=sessionStorage.getItem("views_payments");if(l) payments=JSON.parse(l);} catch(e){}
+  } else {
+    try {
+      const r = await fetch(`${API_BASE}/api/views/load?tg_id=${USER_ID}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data.ok) {
+          try { entries  = JSON.parse(data.entries);  } catch(e){ entries=[]; }
+          try { songs    = JSON.parse(data.songs);    } catch(e){ songs=[]; }
+          try { payments = JSON.parse(data.payments); } catch(e){ payments=[]; }
+        }
+      }
+    } catch(e) { console.warn("API load failed:", e); }
+  }
+  // Migrar entries sin platform
+  const knownPlats=["spotify","amazon","amazon_prime","apple","youtube","manual"];
+  entries=entries.map(e=>{
+    if (!e.platform||!knownPlats.includes(e.platform)) {
+      if (e.listeners!==undefined||e.monthly!==undefined||e.followers!==undefined||e.playlist_adds!==undefined) return {...e,platform:"spotify"};
+      if (e.views!==undefined&&!e.streams) return {...e,platform:"youtube"};
+      return {...e,platform:"manual"};
+    }
+    return e;
+  });
+  buildPills();
+  buildSupportRow();
+  document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
+  render(); renderHistory(); renderSongs(); updatePayStatus(); renderDatosPanel();
+}
+
+function _pushSave() {
+  // Debounce: espera 1.5s sin cambios antes de guardar
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 1500);
+}
+
+async function _doSave() {
+  const body = {
+    tg_id:    USER_ID,
+    entries:  JSON.stringify(entries),
+    songs:    JSON.stringify(songs),
+    payments: JSON.stringify(payments),
+  };
+  if (USER_ID === "guest") {
+    try { sessionStorage.setItem("views_entries",  body.entries);  } catch(e){}
+    try { sessionStorage.setItem("views_songs",    body.songs);    } catch(e){}
+    try { sessionStorage.setItem("views_payments", body.payments); } catch(e){}
+    return;
+  }
+  try {
+    await fetch(`${API_BASE}/api/views/save`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+  } catch(e) { console.warn("API save failed:", e); }
+}
+
+function save()         { _pushSave(); }
+function saveSongs()    { _pushSave(); }
+function savePayments() { _pushSave(); }
+
+// ── HELPERS ───────────────────────────────────────────────
+function fmtNum(n) {
+  if (!n&&n!==0) return "—";
+  n=Math.floor(n);
+  if (n>=1000000) return (n/1000000).toFixed(1)+"M";
+  if (n>=1000)    return (n/1000).toFixed(1)+"K";
+  return n.toString();
+}
+function fmtMoney(n) {
+  if (!n) return "$0.00";
+  if (n>=1000) return "$"+(n/1000).toFixed(1)+"K";
+  return "$"+n.toFixed(2);
+}
+function cutoff() {
+  const d=new Date(); d.setDate(d.getDate()-currentPeriod);
+  return d.toISOString().split("T")[0];
+}
+function getVal(e) { const v=e[currentMetric]??e.streams??e.views??0; return typeof v==="number"?v:parseFloat(v)||0; }
+const NOSPIKE_PLATS=["amazon","amazon_prime","apple"];
+
+function getFiltered() {
+  const cut=cutoff();
+  let f=entries.filter(e=>e.date>=cut);
+  if (selPlatform!=="all") {
+    // Plataformas periódicas: mostrar SIEMPRE todos los datos disponibles
+    if (NOSPIKE_PLATS.includes(selPlatform)) {
+      f=entries.filter(e=>e.platform===selPlatform);
+    } else {
+      f=f.filter(e=>e.platform===selPlatform);
+    }
+  } else {
+    if (activePlats.size>0) {
+      f=f.filter(e=>activePlats.has(e.platform));
+    }
+  }
+  return f.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function getStatsData() {
+  const cut=cutoff();
+  let f=entries.filter(e=>e.date>=cut);
+  if (selPlatform!=="all") {
+    if (NOSPIKE_PLATS.includes(selPlatform)) {
+      f=entries.filter(e=>e.platform===selPlatform);
+    } else {
+      f=f.filter(e=>e.platform===selPlatform);
+    }
+  }
+  if (selPlatform==="all" && activePlats.size>0) {
+    f=f.filter(e=>activePlats.has(e.platform));
+  }
+  return f;
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function render() {
+  const data=getFiltered();         // Para el gráfico (excluye noSpike en modo all)
+  const statsData=getStatsData();   // Para stats: TODAS las plataformas en el período
+
+  const vals=statsData.map(e=>getVal(e));
+  const isSnapshot = SNAPSHOT_METRICS.includes(currentMetric);
+  const total = isSnapshot
+    ? (vals.length ? vals[vals.length-1] : 0)
+    : vals.reduce((a,b)=>a+b,0);
+  const avg  =vals.length?Math.round(total/vals.length):0;
+  const max  =vals.length?Math.max(...vals):0;
+
+  // Crecimiento basado en statsData
+  let growth=0;
+  if (statsData.length>=2) {
+    if (isSnapshot) {
+      // Snapshot: compare first vs last value (net change in period)
+      const firstVal=getVal(statsData[0]);
+      const lastVal=getVal(statsData[statsData.length-1]);
+      growth=firstVal>0?Math.round(((lastVal-firstVal)/firstVal)*100):0;
+    } else {
+      const h=Math.floor(statsData.length/2);
+      const a1=statsData.slice(0,h).reduce((s,e)=>s+getVal(e),0)/h;
+      const a2=statsData.slice(h).reduce((s,e)=>s+getVal(e),0)/(statsData.length-h);
+      growth=a1>0?Math.round(((a2-a1)/a1)*100):0;
+    }
+  }
+
+  // Label dinámico del total
+  const noSpikeWithFallback=NOSPIKE_PLATS.includes(selPlatform)&&entries.some(e=>e.platform===selPlatform);
+  const lbl=document.getElementById("total-lbl");
+  const activePlatsArr=[...activePlats];
+  const activePlatLabel=selPlatform==="all"&&activePlatsArr.length>0&&activePlatsArr.length<5
+    ? activePlatsArr.map(id=>PLATFORMS.find(p=>p.id===id)?.emoji||"").join("")+" total"
+    : noSpikeWithFallback?"total disponible"
+    : isSnapshot?"último registro"
+    :"total · período";
+  lbl.textContent=activePlatLabel;
+  lbl.style.color=noSpikeWithFallback?"rgba(255,153,0,0.8)":isSnapshot?"rgba(233,30,99,0.8)":"";
+
+  document.getElementById("total-views").textContent=fmtNum(total);
+  // For snapshot: avg = average snapshot; max = peak; labels adjusted
+  const avgDisplay = isSnapshot ? Math.round(vals.reduce((a,b)=>a+b,0)/Math.max(1,vals.length)) : avg;
+  document.getElementById("st-avg").textContent=fmtNum(avgDisplay);
+  document.getElementById("st-max").textContent=fmtNum(max);
+  // Dynamic stat labels
+  const avgLbl = document.getElementById("st-avg-lbl");
+  const maxLbl = document.getElementById("st-max-lbl");
+  const grwLbl = document.getElementById("st-growth-lbl");
+  if (avgLbl) avgLbl.textContent = isSnapshot ? "Promedio" : "Promedio";
+  if (maxLbl) maxLbl.textContent = isSnapshot ? "Máximo" : "Mejor día";
+  if (grwLbl) grwLbl.textContent = isSnapshot ? "Ganancia" : "Crecimiento";
+  const gEl=document.getElementById("st-growth");
+  gEl.textContent=(growth>=0?"+":"")+growth+"%";
+  gEl.style.color=growth>=0?"var(--green)":"var(--fire)";
+
+  // Earnings — usa promedio sin outliers (±2σ) para proyecciones realistas
+  let rate=0;
+  if (currentMetric==="streams") {
+    if (selPlatform!=="all") {
+      const plat=PLATFORMS.find(p=>p.id===selPlatform);
+      rate=plat?.rate||0;
+    } else {
+      const totals={}; let grandTotal=0;
+      statsData.forEach(e=>{ totals[e.platform]=(totals[e.platform]||0)+getVal(e); grandTotal+=getVal(e); });
+      if (grandTotal>0) Object.entries(totals).forEach(([pid,cnt])=>{
+        const p=PLATFORMS.find(x=>x.id===pid); if(p) rate+=p.rate*(cnt/grandTotal);
+      });
+    }
+  }
+
+  // Promedio limpio sin outliers para earnings
+  function cleanAvg(values) {
+    if (values.length < 4) return values.reduce((a,b)=>a+b,0)/Math.max(1,values.length);
+    const mean = values.reduce((a,b)=>a+b,0) / values.length;
+    const std  = Math.sqrt(values.reduce((s,v)=>s+(v-mean)**2,0) / values.length);
+    const clean = std > 0 ? values.filter(v => Math.abs(v-mean) <= 2*std) : values;
+    return clean.reduce((a,b)=>a+b,0) / Math.max(1,clean.length);
+  }
+
+  const earnVals  = statsData.map(e=>getVal(e)).filter(v=>v>0);
+  const cleanAvgV = earnVals.length ? cleanAvg(earnVals) : 0;
+  const outlierCount = earnVals.length - (earnVals.length < 4 ? earnVals.length :
+    earnVals.filter(v=>{ const m=earnVals.reduce((a,b)=>a+b,0)/earnVals.length; const s=Math.sqrt(earnVals.reduce((x,vv)=>x+(vv-m)**2,0)/earnVals.length); return s>0?Math.abs(v-m)<=2*s:true; }).length);
+
+  const dayEarn = cleanAvgV * rate;
+  const earnBox = document.getElementById("earn-box");
+  if (rate>0 && total>0) {
+    earnBox.style.display="grid";
+    document.getElementById("e-day").textContent   = fmtMoney(dayEarn);
+    document.getElementById("e-month").textContent = fmtMoney(dayEarn*30);
+    document.getElementById("e-year").textContent  = fmtMoney(dayEarn*365);
+    // Aviso si se excluyeron outliers
+    const earnNote = document.getElementById("earn-note");
+    if (earnNote) {
+      if (outlierCount > 0) {
+        earnNote.textContent = `⚠️ ${outlierCount} día${outlierCount>1?"s":""} anómal${outlierCount>1?"os":"o"} excluido${outlierCount>1?"s":""} del cálculo`;
+        earnNote.style.display = "block";
+      } else {
+        earnNote.style.display = "none";
+      }
+    }
+  } else {
+    earnBox.style.display="none";
+  }
+
+  drawChart(getZoomed(data));
+  updateScrollbar();
+  buildSupportRow();
+}
+
+function drawChart(data) {
+  const canvas=document.getElementById("chart");
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth*dpr; const H=180*dpr;
+  canvas.width=W; canvas.height=H;
+  ctx.fillStyle="#0d0f1a"; ctx.fillRect(0,0,W,H);
+
+  if (!data.length) {
+    canvas._data=null; canvas._vals=null; canvas._pts=null;
+    ctx.fillStyle="#4a4f6a"; ctx.font=`${12*dpr}px -apple-system`; ctx.textAlign="center";
+    ctx.fillText("Importa un CSV o añade datos 👇", W/2, H/2); return;
+  }
+
+  const vals=data.map(e=>getVal(e));
+  const maxV=Math.max(...vals)*1.15||1;
+  const pad={t:14*dpr,b:28*dpr,l:8*dpr,r:8*dpr};
+  const cW=W-pad.l-pad.r; const cH=H-pad.t-pad.b;
+  const toX=i=>pad.l+(i/Math.max(data.length-1,1))*cW;
+  const toY=v=>pad.t+cH-(v/maxV)*cH;
+  const m=METRICS.find(x=>x.id===currentMetric)||METRICS[0];
+
+  // Grid
+  ctx.strokeStyle="#1A1A2E"; ctx.lineWidth=dpr;
+  [0,1,2,3].forEach(i => {
+    const y=pad.t+(cH/3)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    if (i<3) {
+      ctx.fillStyle="#4a4f6a"; ctx.font=`${8*dpr}px -apple-system`; ctx.textAlign="right";
+      ctx.fillText(fmtNum(maxV-(maxV/3)*i), W-pad.r-2, y-2);
+    }
+  });
+
+  // ── SMA CALC ──────────────────────────────────────────────
+  function calcSMA(v, period) {
+    return v.map((_,i) => {
+      if (i<period-1) return null;
+      return v.slice(i-period+1,i+1).reduce((a,b)=>a+b,0)/period;
+    });
+  }
+  const fastPeriod = vals.length>=7?7:vals.length>=3?3:null;
+  const slowPeriod = vals.length>=28?28:vals.length>=7?7:null;
+  const smaFast = fastPeriod ? calcSMA(vals,fastPeriod) : null;
+  const smaSlow = slowPeriod && slowPeriod!==fastPeriod ? calcSMA(vals,slowPeriod) : null;
+
+  // Helper: find crossing point between price and SMA between index i and i+1
+  function crossPoint(i, sma) {
+    const d = (vals[i+1]-vals[i]) - (sma[i+1]-sma[i]);
+    const t = d!==0 ? (sma[i]-vals[i])/d : 0.5;
+    const tc = Math.max(0,Math.min(1,t));
+    return {
+      x: toX(i)+tc*(toX(i+1)-toX(i)),
+      y: toY(vals[i]+tc*(vals[i+1]-vals[i]))
+    };
+  }
+
+  // ── BASE GRADIENT FILL (más sutil, deja ver el color de cruce) ──
+  const grad=ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,m.color+"33"); grad.addColorStop(1,m.color+"03");
+  ctx.beginPath(); ctx.moveTo(toX(0),H-pad.b);
+  data.forEach((_,i)=>ctx.lineTo(toX(i),toY(vals[i])));
+  ctx.lineTo(toX(data.length-1),H-pad.b); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+
+  // ── CROSSOVER FILL Y LÍNEA DE PRECIO ─────────────────────
+  if (smaFast) {
+    const COL_UP="#00e676"; const COL_DN="#ff4d4d";
+    const validStart=smaFast.findIndex(v=>v!==null);
+
+    // Relleno entre precio y SMA (verde/rojo)
+    ctx.save(); ctx.globalAlpha=0.18;
+    for (let i=validStart; i<vals.length-1; i++) {
+      if (smaFast[i]===null||smaFast[i+1]===null) continue;
+      const ab0=vals[i]>=smaFast[i], ab1=vals[i+1]>=smaFast[i+1];
+      const x0=toX(i),x1=toX(i+1),py0=toY(vals[i]),py1=toY(vals[i+1]);
+      const sy0=toY(smaFast[i]),sy1=toY(smaFast[i+1]);
+      if (ab0===ab1) {
+        ctx.beginPath(); ctx.moveTo(x0,py0); ctx.lineTo(x1,py1);
+        ctx.lineTo(x1,sy1); ctx.lineTo(x0,sy0); ctx.closePath();
+        ctx.fillStyle=ab0?COL_UP:COL_DN; ctx.fill();
+      } else {
+        const cp=crossPoint(i,smaFast);
+        // Primer tramo
+        ctx.beginPath(); ctx.moveTo(x0,py0); ctx.lineTo(cp.x,cp.y);
+        ctx.lineTo(cp.x,cp.y); ctx.lineTo(x0,sy0); ctx.closePath();
+        ctx.fillStyle=ab0?COL_UP:COL_DN; ctx.fill();
+        // Segundo tramo
+        ctx.beginPath(); ctx.moveTo(cp.x,cp.y); ctx.lineTo(x1,py1);
+        ctx.lineTo(x1,sy1); ctx.lineTo(cp.x,cp.y); ctx.closePath();
+        ctx.fillStyle=ab1?COL_UP:COL_DN; ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    // Línea de precio coloreada (verde/rojo por segmentos)
+    ctx.save(); ctx.lineWidth=2.5*dpr; ctx.lineJoin="round"; ctx.lineCap="round";
+    // Segmento inicial pre-SMA en color neutro
+    if (validStart>0) {
+      ctx.beginPath(); ctx.strokeStyle=m.color; ctx.globalAlpha=0.5;
+      for(let i=0;i<=validStart;i++) i===0?ctx.moveTo(toX(i),toY(vals[i])):ctx.lineTo(toX(i),toY(vals[i]));
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    // Segmentos coloreados
+    for (let i=validStart; i<vals.length-1; i++) {
+      if (smaFast[i]===null||smaFast[i+1]===null) continue;
+      const ab0=vals[i]>=smaFast[i], ab1=vals[i+1]>=smaFast[i+1];
+      const x0=toX(i),x1=toX(i+1),py0=toY(vals[i]),py1=toY(vals[i+1]);
+      if (ab0===ab1) {
+        ctx.beginPath(); ctx.strokeStyle=ab0?COL_UP:COL_DN;
+        ctx.moveTo(x0,py0); ctx.lineTo(x1,py1); ctx.stroke();
+      } else {
+        const cp=crossPoint(i,smaFast);
+        ctx.beginPath(); ctx.strokeStyle=ab0?COL_UP:COL_DN;
+        ctx.moveTo(x0,py0); ctx.lineTo(cp.x,cp.y); ctx.stroke();
+        ctx.beginPath(); ctx.strokeStyle=ab1?COL_UP:COL_DN;
+        ctx.moveTo(cp.x,cp.y); ctx.lineTo(x1,py1); ctx.stroke();
+      }
+    }
+    // Punto final
+    if (vals.length>validStart) {
+      const lastI=vals.length-1;
+      const lastAbove=vals[lastI]>=smaFast[lastI];
+      ctx.beginPath(); ctx.arc(toX(lastI),toY(vals[lastI]),4*dpr,0,Math.PI*2);
+      ctx.fillStyle=lastAbove?COL_UP:COL_DN; ctx.fill();
+    }
+    ctx.restore();
+
+    // Marcadores de cruce (círculos en el punto exacto)
+    ctx.save();
+    for (let i=validStart; i<vals.length-1; i++) {
+      if (smaFast[i]===null||smaFast[i+1]===null) continue;
+      if ((vals[i]>=smaFast[i])===(vals[i+1]>=smaFast[i+1])) continue;
+      const cp=crossPoint(i,smaFast);
+      const goingUp=vals[i+1]>=smaFast[i+1];
+      ctx.beginPath(); ctx.arc(cp.x,cp.y,3.5*dpr,0,Math.PI*2);
+      ctx.fillStyle=goingUp?COL_UP:COL_DN;
+      ctx.strokeStyle="#0d0f1a"; ctx.lineWidth=1.5*dpr;
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+
+  } else {
+    // Sin SMA: línea normal en color de la métrica
+    ctx.beginPath(); ctx.strokeStyle=m.color; ctx.lineWidth=2.5*dpr; ctx.lineJoin="round";
+    data.forEach((_,i)=>i===0?ctx.moveTo(toX(i),toY(vals[i])):ctx.lineTo(toX(i),toY(vals[i])));
+    ctx.stroke();
+    // Dots
+    if (data.length<=20) {
+      data.forEach((_,i)=>{
+        ctx.beginPath(); ctx.arc(toX(i),toY(vals[i]),3*dpr,0,Math.PI*2);
+        ctx.fillStyle=m.color; ctx.fill();
+      });
+    }
+  }
+
+  // ── LÍNEAS SMA ────────────────────────────────────────────
+  function drawSMA(sma, color, dashed) {
+    ctx.save(); ctx.beginPath(); ctx.strokeStyle=color;
+    ctx.lineWidth=1.8*dpr; ctx.lineJoin="round"; ctx.lineCap="round";
+    if (dashed) { try{ctx.setLineDash([5*dpr,4*dpr]);}catch(e){} }
+    let started=false;
+    sma.forEach((v,i)=>{
+      if (v===null) return;
+      if (!started){ctx.moveTo(toX(i),toY(v));started=true;}
+      else ctx.lineTo(toX(i),toY(v));
+    });
+    ctx.stroke(); try{ctx.setLineDash([]);}catch(e){} ctx.restore();
+  }
+  if (smaFast) drawSMA(smaFast,"#4fc3f7");
+  if (smaSlow) drawSMA(smaSlow,"#ffa726",true);
+
+  // ── LEYENDA ───────────────────────────────────────────────
+  if (smaFast) {
+    ctx.save(); ctx.font=`bold ${8*dpr}px -apple-system`; ctx.textAlign="left";
+    const ly=pad.t+10*dpr; let lx=pad.l+6*dpr;
+    const smaFastLabel=fastPeriod===3?"SMA3":"SMA7";
+    ctx.fillStyle="#4fc3f7";
+    ctx.fillRect(lx,ly-5*dpr,12*dpr,2*dpr);
+    ctx.fillText(smaFastLabel,lx+15*dpr,ly); lx+=45*dpr;
+    if (smaSlow) {
+      const smaSlowLabel=slowPeriod===28?"SMA28":"SMA7";
+      ctx.fillStyle="#ffa726";
+      ctx.fillRect(lx,ly-5*dpr,8*dpr,2*dpr);
+      ctx.fillRect(lx+10*dpr,ly-5*dpr,4*dpr,2*dpr);
+      ctx.fillText(smaSlowLabel,lx+17*dpr,ly); lx+=52*dpr;
+    }
+    // Leyenda cruce
+    ctx.fillStyle="#00e676"; ctx.fillRect(lx,ly-5*dpr,6*dpr,6*dpr);
+    ctx.fillText("↑",lx+8*dpr,ly);
+    ctx.fillStyle="#ff4d4d"; ctx.fillRect(lx+16*dpr,ly-5*dpr,6*dpr,6*dpr);
+    ctx.fillText("↓",lx+24*dpr,ly);
+    ctx.restore();
+  }
+
+  // Dots normales si pocos datos y sin SMA
+  if (data.length<=20 && !smaFast) {
+    data.forEach((_,i)=>{
+      ctx.beginPath(); ctx.arc(toX(i),toY(vals[i]),3*dpr,0,Math.PI*2);
+      ctx.fillStyle=m.color; ctx.fill();
+    });
+  }
+
+  // X labels — smart format based on period
+  const MONTHS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  ctx.fillStyle="#7a8099"; ctx.textAlign="center";
+  const useMon=data.length>60; // month view for 3M+
+  const maxLabels=6;
+  const step=Math.max(1,Math.floor(data.length/maxLabels));
+
+  if (useMon) {
+    // Show month name — enforce min pixel gap to avoid overlap
+    const minGap=36*dpr;
+    let lastX=-9999; let lastMon=-1;
+    data.forEach((e,i) => {
+      const dt=new Date(e.date+"T00:00:00");
+      const mon=dt.getMonth();
+      if (mon!==lastMon) {
+        lastMon=mon;
+        const x=toX(i);
+        if (x-lastX>=minGap) {
+          lastX=x;
+          ctx.font=`bold ${9*dpr}px -apple-system`;
+          ctx.fillStyle="#b0b8d0";
+          ctx.fillText(MONTHS[mon], x, H-pad.b+11*dpr);
+          ctx.strokeStyle="#3a3f5a"; ctx.lineWidth=dpr;
+          ctx.beginPath(); ctx.moveTo(x,H-pad.b+1); ctx.lineTo(x,H-pad.b+4*dpr); ctx.stroke();
+        }
+      }
+    });
+  } else {
+    // Show day/month for shorter periods
+    ctx.font=`${9*dpr}px -apple-system`;
+    ctx.fillStyle="#7a8099";
+    data.forEach((e,i) => {
+      if (i%step===0||i===data.length-1) {
+        const dt=new Date(e.date+"T00:00:00");
+        ctx.fillText(`${dt.getDate()} ${MONTHS[dt.getMonth()]}`, toX(i), H-pad.b+11*dpr);
+      }
+    });
+  }
+
+  // ── LÍNEAS DE SOPORTE ────────────────────────────────────
+  if (vals.length >= 2) {
+    const avgV = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const maxV2 = Math.max(...vals);
+    const minV2 = Math.min(...vals);
+    // Linear regression
+    const n = vals.length;
+    const sumX  = vals.reduce((_,__,i)=>_+i, 0);
+    const sumY  = vals.reduce((a,b)=>a+b, 0);
+    const sumXY = vals.reduce((a,v,i)=>a+i*v, 0);
+    const sumX2 = vals.reduce((a,_,i)=>a+i*i, 0);
+    const slope = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX)||0;
+    const intercept = (sumY - slope*sumX) / n;
+
+    // Reduce opacity when SMA also active (less visual noise)
+    const lineAlpha = smaFast ? 0.55 : 0.75;
+
+    // Anti-collision: track used label Y positions
+    const usedLabelY = [];
+    function safeY(py) {
+      const gap = 11*dpr;
+      let y = py - 3*dpr;
+      let tries = 0;
+      while (tries++ < 8) {
+        const clash = usedLabelY.some(uy => Math.abs(uy - y) < gap);
+        if (!clash) break;
+        y -= gap;
+      }
+      usedLabelY.push(y);
+      return y;
+    }
+
+    function drawHline(y, color, dashed, labelTxt, labelVal) {
+      const py = toY(y);
+      if (py < pad.t - 2 || py > H - pad.b + 2) return;
+      ctx.save();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.2*dpr; ctx.globalAlpha = lineAlpha;
+      if (dashed) try{ctx.setLineDash([6*dpr,4*dpr]);}catch(e){}
+      ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W-pad.r, py); ctx.stroke();
+      try{ctx.setLineDash([]);}catch(e){}
+      // Label on LEFT side with background pill for readability
+      const ly = safeY(py);
+      const txt = labelTxt + " " + fmtNum(labelVal);
+      ctx.font = `bold ${8*dpr}px -apple-system`;
+      ctx.textAlign = "left";
+      const tx = pad.l + 5*dpr;
+      const tw = ctx.measureText(txt).width;
+      // Background pill
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = "#0d0f1a";
+      ctx.beginPath();
+      ctx.roundRect?.(tx-2*dpr, ly-7*dpr, tw+6*dpr, 10*dpr, 3*dpr)
+        || ctx.rect(tx-2*dpr, ly-7*dpr, tw+6*dpr, 10*dpr);
+      ctx.fill();
+      // Text
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = color;
+      ctx.fillText(txt, tx, ly);
+      ctx.restore();
+    }
+
+    if (supportLines.avg)   drawHline(avgV, "#f5c518", true,  "AVG", avgV);
+    if (supportLines.max)   drawHline(maxV2,"#00e676", true,  "MAX", maxV2);
+    if (supportLines.min)   drawHline(minV2,"#ff4d4d", true,  "MIN", minV2);
+    if (supportLines.trend) {
+      const ty0 = intercept;
+      const ty1 = slope*(n-1)+intercept;
+      const clamped0 = Math.max(0, ty0); const clamped1 = Math.max(0, ty1);
+      const py0 = toY(clamped0); const py1 = toY(clamped1);
+      ctx.save(); ctx.strokeStyle="#b06afc"; ctx.lineWidth=1.8*dpr; ctx.globalAlpha=lineAlpha+0.1;
+      ctx.beginPath(); ctx.moveTo(toX(0),py0); ctx.lineTo(toX(n-1),py1); ctx.stroke();
+      // Label at RIGHT end of trend line (away from SMA legend top-left)
+      const slopePct = intercept>0?Math.round((slope/intercept)*100*n):0;
+      const trendTxt = "TREND "+(slopePct>=0?"▲":"▼")+Math.abs(slopePct)+"%";
+      ctx.font=`bold ${8*dpr}px -apple-system`;
+      const ttw = ctx.measureText(trendTxt).width;
+      const tlx = W - pad.r - ttw - 6*dpr;
+      const tly = Math.max(pad.t+10*dpr, Math.min(H-pad.b-4*dpr, py1 - 5*dpr));
+      // Background pill
+      ctx.globalAlpha=0.7; ctx.fillStyle="#0d0f1a";
+      ctx.beginPath();
+      ctx.roundRect?.(tlx-3*dpr, tly-7*dpr, ttw+8*dpr, 10*dpr, 3*dpr)
+        || ctx.rect(tlx-3*dpr, tly-7*dpr, ttw+8*dpr, 10*dpr);
+      ctx.fill();
+      ctx.globalAlpha=0.95; ctx.fillStyle="#b06afc";
+      ctx.textAlign="left"; ctx.fillText(trendTxt, tlx, tly);
+      ctx.restore();
+    }
+  }
+
+  // Store point positions in CSS pixels for the dot indicator
+  canvas._pts=data.map((_,i)=>({
+    x: toX(i)/dpr,
+    y: toY(vals[i])/dpr
+  }));
+  canvas._data=data; canvas._vals=vals; canvas._m=m;
+}
+
+// ── SCROLLBAR ─────────────────────────────────────────────
+function updateScrollbar() {
+  const bar   = document.getElementById("chart-scrollbar");
+  const thumb = document.getElementById("scroll-thumb");
+  const full  = getFiltered().length;
+  if (!bar || !thumb || full < 2) { if (bar) bar.style.display="none"; return; }
+  const curEnd = zoomEnd===Infinity ? full-1 : zoomEnd;
+  const span   = curEnd - zoomStart + 1;
+  if (span >= full) { bar.style.display="none"; return; }
+  bar.style.display = "block";
+  thumb.style.left  = (zoomStart / full * 100).toFixed(2) + "%";
+  thumb.style.width = (span      / full * 100).toFixed(2) + "%";
+}
+
+function setupScrollbar() {
+  const track = document.getElementById("scroll-track");
+  const thumb = document.getElementById("scroll-thumb");
+  if (!track || !thumb) return;
+
+  let dragging       = false;
+  let dragStartX     = 0;
+  let dragStartIndex = 0;
+
+  function getState() {
+    const full   = getFiltered().length;
+    const curEnd = zoomEnd===Infinity ? full-1 : zoomEnd;
+    return { full, span: curEnd - zoomStart + 1 };
+  }
+
+  function moveTo(clientX) {
+    const rect = track.getBoundingClientRect();
+    const { full, span } = getState();
+    const dx  = clientX - dragStartX;
+    const idx = Math.round(dragStartIndex + dx / rect.width * full);
+    zoomStart = Math.max(0, Math.min(full - span, idx));
+    zoomEnd   = zoomStart + span - 1;
+    render();
+  }
+
+  function jumpTo(clientX) {
+    const rect = track.getBoundingClientRect();
+    const { full, span } = getState();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    zoomStart = Math.max(0, Math.min(full - span, Math.round(pct * full - span / 2)));
+    zoomEnd   = zoomStart + span - 1;
+    render();
+  }
+
+  thumb.addEventListener("mousedown", e => {
+    dragging = true; dragStartX = e.clientX; dragStartIndex = zoomStart;
+    e.preventDefault(); e.stopPropagation();
+  });
+  window.addEventListener("mousemove", e => { if (dragging) moveTo(e.clientX); });
+  window.addEventListener("mouseup",   ()  => { dragging = false; });
+  track.addEventListener("mousedown",  e  => { if (e.target !== thumb) jumpTo(e.clientX); });
+
+  thumb.addEventListener("touchstart", e => {
+    dragging = true; dragStartX = e.touches[0].clientX; dragStartIndex = zoomStart;
+    e.preventDefault(); e.stopPropagation();
+  },{passive:false});
+  thumb.addEventListener("touchmove", e => {
+    if (dragging) { moveTo(e.touches[0].clientX); e.preventDefault(); }
+  },{passive:false});
+  thumb.addEventListener("touchend", () => { dragging = false; });
+  track.addEventListener("touchstart", e => {
+    if (e.target !== thumb) { jumpTo(e.touches[0].clientX); e.preventDefault(); }
+  },{passive:false});
+}
+
+// ── TOOLTIP + ZOOM ────────────────────────────────────────
+function setupTooltip() {
+  const canvas    = document.getElementById("chart");
+  const tooltip   = document.getElementById("tooltip");
+  const crosshair = document.getElementById("crosshair");
+  const dot       = document.getElementById("chart-dot");
+  const MIN_PTS   = 3;
+
+  // ── Helpers ──
+  function ptDist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
+  function ptMid(a, b)  { return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
+
+  function clampZoom(ns, ne) {
+    const full = getFiltered().length - 1;
+    if (ne - ns < MIN_PTS - 1) return;
+    if (ns < 0)    { ne -= ns; ns = 0; }
+    if (ne > full) { ns -= ne - full; ne = full; }
+    zoomStart = Math.max(0, ns);
+    zoomEnd   = Math.min(full, ne);
+    render();
+  }
+
+  // ── Tooltip ──
+  function showTooltip(clientX) {
+    const d = canvas._data; const v = canvas._vals;
+    if (!d?.length) return;
+    const rect    = canvas.getBoundingClientRect();
+    const section = canvas.parentElement;
+    const secRect = section.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const idx = Math.round(pct * (d.length - 1));
+    const entry = d[idx]; const val = v[idx];
+    const m    = canvas._m || METRICS[0];
+    const plat = PLATFORMS.find(p => p.id===selPlatform);
+    const rate = currentMetric==="streams" && plat ? plat.rate : 0;
+    const dt   = new Date(entry.date + "T00:00:00");
+    document.getElementById("tt-date").textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short",year:"2-digit"});
+    document.getElementById("tt-val").textContent  = fmtNum(val) + " " + m.emoji;
+    document.getElementById("tt-val").style.color  = m.color;
+    document.getElementById("tt-earn").textContent = rate > 0 ? `💰 ${fmtMoney(val*rate)}` : "";
+    const xSec = clientX - secRect.left;
+    crosshair.style.left = xSec + "px"; crosshair.style.display = "block";
+    const pts = canvas._pts;
+    if (dot && pts && pts[idx]) {
+      dot.style.left       = (rect.left - secRect.left + pts[idx].x) + "px";
+      dot.style.top        = (rect.top  - secRect.top  + pts[idx].y) + "px";
+      dot.style.color      = m.color;
+      dot.style.background = m.color;
+      dot.style.display    = "block";
+    }
+    const ttW = 140;
+    const dotY = pts && pts[idx] ? (rect.top - secRect.top + pts[idx].y) : 30;
+    tooltip.style.left    = Math.max(0, Math.min(secRect.width - ttW, xSec - ttW/2)) + "px";
+    tooltip.style.top     = Math.max(4, dotY - 38) + "px";
+    tooltip.style.display = "flex";
+    if (tg) tg.HapticFeedback?.selectionChanged();
+  }
+  function hideTooltip() {
+    setTimeout(() => {
+      tooltip.style.display = "none";
+      crosshair.style.display = "none";
+      if (dot) dot.style.display = "none";
+    }, 1800);
+  }
+
+  // ── Touch state ──
+  let t1 = null, t2 = null;   // touch points {id, x, y}
+  let pinch0 = null;           // {dist, zs, ze} at pinch start
+  let panLast = 0, panAcc = 0;
+  let lastTap = 0;
+  let gesture = "none";        // "none" | "pan" | "pinch" | "tap"
+
+  canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t => {
+      if (!t1)      t1 = {id:t.identifier, x:t.clientX, y:t.clientY};
+      else if (!t2) t2 = {id:t.identifier, x:t.clientX, y:t.clientY};
+    });
+
+    if (t1 && t2) {
+      // Two fingers → pinch
+      gesture = "pinch";
+      const full = getFiltered().length - 1;
+      pinch0 = {
+        dist: ptDist(t1, t2),
+        zs:   zoomStart,
+        ze:   zoomEnd===Infinity ? full : zoomEnd,
+      };
+      tooltip.style.display = "none";
+    } else if (t1) {
+      // One finger
+      gesture  = "none";
+      panLast  = t1.x;
+      panAcc   = 0;
+      pinch0   = null;
+      const now = Date.now();
+      if (now - lastTap < 300) { zoomReset(); render(); lastTap = 0; }
+      else lastTap = now;
+    }
+  }, {passive:false});
+
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    // Update positions
+    Array.from(e.changedTouches).forEach(t => {
+      if (t1 && t.identifier===t1.id) t1 = {id:t1.id, x:t.clientX, y:t.clientY};
+      if (t2 && t.identifier===t2.id) t2 = {id:t2.id, x:t.clientX, y:t.clientY};
+    });
+
+    if (gesture==="pinch" && t1 && t2 && pinch0) {
+      const newDist = ptDist(t1, t2);
+      const scale   = pinch0.dist / newDist;
+      const span0   = pinch0.ze - pinch0.zs;
+      const mid     = ptMid(t1, t2);
+      const rect    = canvas.getBoundingClientRect();
+      const midPct  = Math.max(0, Math.min(1, (mid.x - rect.left) / rect.width));
+      const newSpan = Math.max(MIN_PTS - 1, Math.round(span0 * scale));
+      const anchor  = pinch0.zs + midPct * span0;
+      clampZoom(Math.round(anchor - midPct * newSpan), Math.round(anchor - midPct * newSpan) + newSpan);
+
+    } else if (gesture!=="pinch" && t1 && !t2) {
+      const dx = t1.x - panLast;
+      if (Math.abs(dx) > 3) gesture = "pan";
+
+      if (gesture === "pan") {
+        const rect   = canvas.getBoundingClientRect();
+        const full   = getFiltered().length - 1;
+        const curEnd = zoomEnd===Infinity ? full : zoomEnd;
+        const span   = Math.max(1, curEnd - zoomStart);
+        panAcc += -dx / (rect.width / span);
+        const shift = Math.trunc(panAcc);
+        panAcc -= shift;
+        if (shift !== 0) {
+          let ns = zoomStart + shift, ne = curEnd + shift;
+          if (ns < 0)    { ne -= ns; ns = 0; }
+          if (ne > full) { ns -= ne - full; ne = full; }
+          zoomStart = Math.max(0, ns);
+          zoomEnd   = Math.min(full, ne);
+          render();
+        }
+        panLast = t1.x;
+      } else {
+        showTooltip(t1.x);
+      }
+    }
+  }, {passive:false});
+
+  canvas.addEventListener("touchend", e => {
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t => {
+      if (t1 && t.identifier===t1.id) { t1 = t2; t2 = null; }
+      else if (t2 && t.identifier===t2.id) { t2 = null; }
+    });
+    if (!t1 && !t2) {
+      if (gesture === "none") hideTooltip();
+      gesture = "none"; panAcc = 0; pinch0 = null;
+    } else if (t1 && !t2) {
+      // Went from pinch to single finger — reset pan
+      gesture = "none"; panLast = t1.x; panAcc = 0; pinch0 = null;
+    }
+  }, {passive:false});
+
+  // ── Mouse ──
+  canvas.addEventListener("mousemove",  e => showTooltip(e.clientX));
+  canvas.addEventListener("mouseleave", hideTooltip);
+  canvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    const full   = getFiltered().length - 1;
+    const curEnd = zoomEnd===Infinity ? full : zoomEnd;
+    const span   = curEnd - zoomStart;
+    const factor = e.deltaY > 0 ? 1.15 : 0.87;
+    const rect   = canvas.getBoundingClientRect();
+    const pct    = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const anchor = zoomStart + pct * span;
+    const newSpan = Math.max(MIN_PTS - 1, Math.round(span * factor));
+    clampZoom(Math.round(anchor - pct * newSpan), Math.round(anchor - pct * newSpan) + newSpan);
+  }, {passive:false});
+}
+
+// ── ADD ENTRY ─────────────────────────────────────────────
+function toggleAddForm(btn) {
+  const body = document.getElementById("add-form-body");
+  const open = body.style.display === "none";
+  body.style.display = open ? "block" : "none";
+  btn.style.borderColor = open ? "rgba(245,197,24,0.4)" : "";
+  btn.style.color = open ? "var(--gold)" : "";
+}
+
+function addEntry() {
+  const date=document.getElementById("inp-date").value;
+  const views=parseInt(document.getElementById("inp-views").value);
+  if (!date) { showToast("Elige una fecha"); return; }
+  if (!views||views<0) { showToast("Escribe el valor"); return; }
+  const plat=selPlatform==="all"?"manual":selPlatform;
+  let existing=entries.find(e=>e.date===date&&e.platform===plat);
+  if(existing){existing[currentMetric]=views;}else{
+    const entry={date,platform:plat}; entry[currentMetric]=views;
+    entries.push(entry);
+  }
+  entries.sort((a,b)=>a.date.localeCompare(b.date));
+  save(); render(); renderHistory();
+  document.getElementById("inp-views").value="";
+  showToast("✅ Dato añadido");
+  if (tg) tg.HapticFeedback?.notificationOccurred("success");
+}
+
+// ── IMPORT CSV: SPOTIFY ───────────────────────────────────
+function importSpotifyCSV(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n");
+      const header=lines[0].replace(/^\uFEFF/,"").split(",").map(h=>h.trim());
+      let added=0;
+
+      // Format A: audience-timeline.csv (date, streams, listeners, ...)
+      const iDate   =header.findIndex(h=>/^date$/i.test(h));
+      const iStream =header.findIndex(h=>/^streams$/i.test(h));
+      const iListen =header.findIndex(h=>/^listeners$/i.test(h));
+      const iMonthly=header.findIndex(h=>/monthly listeners/i.test(h)&&!/active/i.test(h));
+      const iFollow =header.findIndex(h=>/^followers$/i.test(h));
+      const iSaves  =header.findIndex(h=>/^saves$/i.test(h));
+      const iPlAdds =header.findIndex(h=>/playlist.?adds/i.test(h));
+
+      // Format B: Trendlines CSV (Fecha DD/MM/YYYY, Reproducciones, Oyentes)
+      const iFecha  =header.findIndex(h=>h==="Fecha"||h==="fecha");
+      const iReprod =header.findIndex(h=>h.includes("Reproducciones")||h.includes("reproducciones"));
+      const iOyentes=header.findIndex(h=>h.includes("Oyentes")&&!h.includes("Mensuales"));
+
+      if (iDate!==-1&&iStream!==-1) {
+        // Format A
+        lines.slice(1).forEach(line => {
+          if (!line.trim()) return;
+          const c=line.split(",");
+          const date=c[iDate]?.trim();
+          if (!date||!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+          entries=entries.filter(ex=>!(ex.date===date&&ex.platform==="spotify"));
+          const entry={date,platform:"spotify"};
+          if (iStream>=0)  entry.streams      =parseInt(c[iStream].replace(/"/g,""))||0;
+          if (iListen>=0)  entry.listeners    =parseInt(c[iListen].replace(/"/g,""))||0;
+          if (iMonthly>=0) entry.monthly      =parseInt(c[iMonthly].replace(/"/g,""))||0;
+          if (iFollow>=0)  entry.followers    =parseInt(c[iFollow].replace(/"/g,""))||0;
+          if (iSaves>=0)   entry.saves        =parseInt(c[iSaves].replace(/"/g,""))||0;
+          if (iPlAdds>=0)  entry.playlist_adds=parseInt(c[iPlAdds].replace(/"/g,""))||0;
+          entries.push(entry); added++;
+        });
+      } else if (iFecha!==-1&&iReprod!==-1) {
+        // Format B: DD/MM/YYYY
+        lines.slice(1).forEach(line => {
+          if (!line.trim()) return;
+          const c=line.split(",").map(x=>x.trim().replace(/"/g,""));
+          const parts=c[iFecha]?.split("/");
+          if (!parts||parts.length!==3) return;
+          const date=`${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
+          entries=entries.filter(ex=>!(ex.date===date&&ex.platform==="spotify"));
+          const entry={date,platform:"spotify"};
+          entry.streams  =parseInt(c[iReprod])||0;
+          if (iOyentes>=0) entry.listeners=parseInt(c[iOyentes])||0;
+          entries.push(entry); added++;
+        });
+      } else { showToast("❌ Formato no reconocido"); return; }
+
+      if (added===0) { showToast("❌ No se pudieron leer filas"); return; }
+      entries.sort((a,b)=>a.date.localeCompare(b.date));
+
+      // Detect available metrics
+      const spEntries=entries.filter(e=>e.platform==="spotify");
+      const avail=[];
+      if (spEntries.some(e=>e.streams>0))       avail.push("streams");
+      if (spEntries.some(e=>e.listeners>0))     avail.push("listeners");
+      if (spEntries.some(e=>e.monthly>0))       avail.push("monthly");
+      if (spEntries.some(e=>e.followers>0))     avail.push("followers");
+      if (spEntries.some(e=>e.saves>0))         avail.push("saves");
+      if (spEntries.some(e=>e.playlist_adds>0)) avail.push("playlist_adds");
+      if (avail.length) currentMetric=avail[0];
+
+      // Auto-period
+      if (added>365) currentPeriod=730;
+      else if (added>180) currentPeriod=365;
+      else if (added>90) currentPeriod=180;
+      else if (added>28) currentPeriod=90;
+      else currentPeriod=Math.max(7,added);
+
+      document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active"));
+      const pMap={7:0,28:1,90:2,180:3,365:4,730:5,1095:6};
+      const tabs=document.querySelectorAll(".ptab");
+      const ti=pMap[currentPeriod]??4;
+      if (tabs[ti]) tabs[ti].classList.add("active");
+
+      // Auto-switch to Spotify
+      selPlatform="spotify";
+      buildPills();
+      save(); render(); renderHistory();
+      document.getElementById("spotify-status").textContent=`✅ ${added} días · ${avail.join(", ")}`;
+      showToast(`✅ ${added} días importados`);
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+// ── IMPORT CSV: AMAZON ────────────────────────────────────
+function importAmazonCSV(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n").filter(l=>l.trim());
+      if (lines.length < 2) { showToast("❌ CSV vacío"); return; }
+
+      const header=lines[0].replace(/^\uFEFF/,"").split(",").map(h=>h.trim().replace(/"/g,""));
+
+      // Find columns flexibly
+      const iFecha  =header.findIndex(h=>/fecha|date/i.test(h));
+      const iReprod =header.findIndex(h=>/reproducciones|streams|plays/i.test(h));
+      const iOyentes=header.findIndex(h=>/oyentes|listeners/i.test(h));
+
+      if (iFecha===-1) { showToast("❌ No se encontró columna de fecha"); return; }
+      if (iReprod===-1 && iOyentes===-1) { showToast("❌ No se encontraron métricas"); return; }
+
+      let added=0;
+      lines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        const c=line.split(",").map(x=>x.trim().replace(/"/g,""));
+        const raw=(c[iFecha]||"").trim();
+        if (!raw) return;
+
+        let date;
+        const p1=raw.split("/");
+        if (p1.length===3 && p1[2].length===4) {
+          // DD/MM/YYYY
+          date=`${p1[2]}-${p1[1].padStart(2,"0")}-${p1[0].padStart(2,"0")}`;
+        } else if (p1.length===3 && p1[0].length===4) {
+          // YYYY/MM/DD
+          date=`${p1[0]}-${p1[1].padStart(2,"0")}-${p1[2].padStart(2,"0")}`;
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+          date=raw;
+        } else return;
+
+        // Validate date
+        if (isNaN(new Date(date).getTime())) return;
+
+        entries=entries.filter(ex=>!(ex.date===date&&ex.platform==="amazon"));
+        const entry={date,platform:"amazon"};
+        if (iReprod>=0  && c[iReprod])  entry.streams  =parseInt(c[iReprod])||0;
+        if (iOyentes>=0 && c[iOyentes]) entry.listeners=parseInt(c[iOyentes])||0;
+        entries.push(entry); added++;
+      });
+
+      if (added===0) { showToast("❌ No se pudieron leer filas"); return; }
+
+      entries.sort((a,b)=>a.date.localeCompare(b.date));
+
+      // Detect available metrics from loaded data
+      const amazonEntries=entries.filter(e=>e.platform==="amazon");
+      const hasStreams  =amazonEntries.some(e=>e.streams>0);
+      const hasListeners=amazonEntries.some(e=>e.listeners>0);
+
+      // Auto-switch metric to what's available
+      if (hasStreams) currentMetric="streams";
+      else if (hasListeners) currentMetric="listeners";
+
+      // Auto-switch platform pill
+      selPlatform="amazon";
+      buildPills();
+
+      // Auto-adjust period to show all loaded data
+      if (added>365) currentPeriod=730;
+      else if (added>180) currentPeriod=365;
+      else if (added>90) currentPeriod=180;
+      else if (added>28) currentPeriod=90;
+      else currentPeriod=Math.max(7,added);
+
+      // Update period tab highlight
+      document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active"));
+      const periodMap={7:0,28:1,90:2,180:3,365:4,730:5,1095:6};
+      const tabIdx=periodMap[currentPeriod]??4;
+      const tabs=document.querySelectorAll(".ptab");
+      if (tabs[tabIdx]) tabs[tabIdx].classList.add("active");
+
+      save(); render(); renderHistory();
+      document.getElementById("amazon-status").textContent=`✅ ${added} días · ${hasStreams?"Streams":""}${hasStreams&&hasListeners?" + ":""}${hasListeners?"Oyentes":""}`;
+      showToast(`✅ ${added} días importados de Amazon`);
+      if(document.getElementById('btab-import')?.classList.contains('active')) renderDatosPanel();
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); console.error(err); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+
+
+// ── PROYECCIÓN DE PAGOS ───────────────────────────────────
+function renderPagos() {
+  const box = document.getElementById("pagos-content");
+  if (!box) return;
+
+  // Group all entries by platform+month → sum streams
+  const byPlatMonth = {};
+  entries.forEach(e => {
+    if (!e.streams && !e.views) return;
+    const month = e.date.slice(0,7);
+    const key = e.platform + "|" + month;
+    if (!byPlatMonth[key]) byPlatMonth[key] = { platform:e.platform, month, streams:0 };
+    byPlatMonth[key].streams += (e.streams || e.views || 0);
+  });
+
+  // Skip non-monetizable platforms
+  const MONETIZABLE = ["spotify","amazon","amazon_prime","apple","youtube"];
+  const items = Object.values(byPlatMonth).filter(i=>MONETIZABLE.includes(i.platform));
+
+  // Also include months from real payments not covered by entries
+  payments.forEach(p => {
+    const key = p.platform + "|" + p.saleMonth;
+    if (!byPlatMonth[key] && MONETIZABLE.includes(p.platform))
+      items.push({ platform:p.platform, month:p.saleMonth, streams:p.streams });
+  });
+
+  if (!items.length && !payments.length) {
+    box.innerHTML = '<div class="empty-state">Carga datos de Spotify, Amazon, Apple o YouTube<br>para ver la proyección de pagos 📅</div>';
+    return;
+  }
+  if (!items.length) {
+    box.innerHTML = '<div class="empty-state">Sin datos de plataformas monetizables cargados.<br>Carga audience-timeline.csv de Spotify o similar.</div>';
+    return;
+  }
+
+  const LAG = { spotify:2, amazon:2, amazon_prime:2, apple:3, youtube:2, manual:2 };
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,7);
+
+  const pagos = items.map(item => {
+    const plat = PLATFORMS.find(p=>p.id===item.platform&&p.id!=='all'&&p.id!=='manual') || null;
+    if (!plat||!plat.rate) return null; // skip unknown/manual/all
+    const lag = LAG[item.platform] || 2;
+    const [y,m] = item.month.split("-").map(Number);
+    const payDate = new Date(y, m-1+lag, 1);
+    const payMonth = payDate.toISOString().slice(0,7);
+
+    // Use real earnings if available, else estimate
+    const realPay = payments.find(p=>p.platform===item.platform && p.saleMonth===item.month);
+    const isReal = !!realPay;
+    const estimatedUSD = realPay ? realPay.earnings : (item.streams * (plat.rate||0));
+
+    let status;
+    if (payMonth < todayStr) status = "pagado";
+    else if (payMonth <= new Date(today.getFullYear(), today.getMonth()+1, 1).toISOString().slice(0,7)) status = "proximo";
+    else status = "pendiente";
+
+    return { ...item, plat, estimatedUSD, payMonth, status, isReal };
+  });
+
+  // Filter out nulls, sort by payment month desc
+  const pagosFiltered = pagos.filter(Boolean);
+  pagosFiltered.sort((a,b) => b.payMonth.localeCompare(a.payMonth));
+
+  // Totals
+  const totalPendiente = pagosFiltered.filter(p=>p.status!=="pagado").reduce((s,p)=>s+p.estimatedUSD,0);
+  const totalPagado    = pagosFiltered.filter(p=>p.status==="pagado").reduce((s,p)=>s+p.estimatedUSD,0);
+
+  const fmtMonth = ym => {
+    const [y,m] = ym.split("-");
+    const names = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    return names[parseInt(m)-1]+" "+y;
+  };
+
+  const statusLabel = { pagado:"✅ Ya pagado", proximo:"⏳ Este mes", pendiente:"🔜 Pendiente" };
+
+  box.innerHTML = `
+    <div class="pagos-header">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Proyección basada en streams cargados</div>
+    </div>
+    <div class="pagos-total">
+      <div><div class="earn-n">${fmtMoney(totalPendiente)}</div><div class="earn-l">🔜 Por cobrar</div></div>
+      <div><div class="earn-n">${fmtMoney(totalPagado)}</div><div class="earn-l">✅ Ya generado</div></div>
+    </div>
+    <div style="padding:0 16px 6px;font-size:9px;color:var(--muted);letter-spacing:0.5px">
+      ⚠️ Estimación · Lag de ${Object.values(LAG)[0]}-${Math.max(...Object.values(LAG))} meses · Varía por país y plataforma
+    </div>
+    ${pagosFiltered.map(p => `
+    <div class="pago-item ${p.status}">
+      <div class="pago-row1">
+        <div class="pago-mes"><span class="pago-plat">${p.plat.emoji}</span>${fmtMonth(p.month)} → pago ${fmtMonth(p.payMonth)}</div>
+        <div class="pago-amt">${fmtMoney(p.estimatedUSD)}</div>
+      </div>
+      <div class="pago-row2">
+        <div class="pago-info">${Math.round(p.streams).toLocaleString()} streams${p.isReal
+          ?" · <span style='color:var(--green);font-weight:700'>✓ pago real</span>"
+          :p.plat.rate>0?" · ~$"+(p.plat.rate).toFixed(6)+"/stream":""}</div>
+        <div class="pago-badge ${p.status}">${statusLabel[p.status]}</div>
+      </div>
+    </div>`).join("")}
+  `;
+}
+
+
+// ── IMPORT CSV: YOUTUBE ───────────────────────────────────
+function importYouTubeCSV(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n").filter(l=>l.trim());
+      if (lines.length<2) { showToast("❌ CSV vacío"); return; }
+
+      // Parse quoted CSV row
+      const parseRow=line=>{
+        const c=[]; let cur="",inQ=false;
+        for(const ch of line+","){
+          if(ch==='"'){inQ=!inQ;}
+          else if(ch===","&&!inQ){c.push(cur.trim());cur="";}
+          else{cur+=ch;}
+        }
+        return c;
+      };
+
+      const header=parseRow(lines[0].replace(/^\uFEFF/,""));
+      const iFecha=header.findIndex(h=>/^fecha$/i.test(h)||/^date$/i.test(h));
+      const iViews=header.findIndex(h=>/visualizaciones|views/i.test(h));
+
+      if (iFecha===-1||iViews===-1) { showToast("❌ Formato YouTube no reconocido"); return; }
+
+      // Group by date, sum views across all videos
+      const byDate={};
+      lines.slice(1).forEach(line=>{
+        const c=parseRow(line);
+        const date=(c[iFecha]||"").trim();
+        if (!date||!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+        const views=parseInt(c[iViews])||0;
+        byDate[date]=(byDate[date]||0)+views;
+      });
+
+      if (!Object.keys(byDate).length) { showToast("❌ No se pudieron leer filas"); return; }
+
+      // Remove existing youtube entries and push new
+      entries=entries.filter(ex=>ex.platform!=="youtube");
+      let added=0;
+      Object.entries(byDate).forEach(([date,views])=>{
+        entries.push({date,platform:"youtube",views,streams:views});
+        added++;
+      });
+
+      entries.sort((a,b)=>a.date.localeCompare(b.date));
+
+      // Auto period
+      if (added>365) currentPeriod=730;
+      else if (added>180) currentPeriod=365;
+      else if (added>90) currentPeriod=180;
+      else if (added>28) currentPeriod=90;
+      else currentPeriod=Math.max(7,added);
+      document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active"));
+      const pMap={7:0,28:1,90:2,180:3,365:4,730:5,1095:6};
+      const tabs=document.querySelectorAll(".ptab");
+      if(tabs[pMap[currentPeriod]??4]) tabs[pMap[currentPeriod]??4].classList.add("active");
+
+      selPlatform="youtube"; currentMetric="views";
+      buildPills(); save(); render(); renderHistory();
+      const total=Object.values(byDate).reduce((a,b)=>a+b,0);
+      document.getElementById("youtube-status").textContent=`✅ ${added} días · ${total.toLocaleString()} views`;
+      showToast(`✅ ${added} días importados de YouTube`);
+      if(document.getElementById('btab-import')?.classList.contains('active')) renderDatosPanel();
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); console.error(err); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+
+
+// ── IMPORT CSV: AMAZON PRIME ─────────────────────────────
+function importAmazonPrimeCSV(input) {
+  importDistroKidFormat(input, "amazon_prime",
+    "amazon-prime-status", "✅ Amazon Prime importado");
+}
+
+// ── IMPORT CSV: APPLE MUSIC ───────────────────────────────
+function importAppleCSV(input) {
+  importDistroKidFormat(input, "apple",
+    "apple-status", "✅ Apple Music importado");
+}
+
+// ── SHARED DISTROKID FORMAT IMPORTER ─────────────────────
+function importDistroKidFormat(input, platId, statusId, successMsg) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n").filter(l=>l.trim());
+      if (lines.length<2) { showToast("❌ CSV vacío"); return; }
+
+      const parseRow=line=>{
+        const c=[]; let cur="",inQ=false;
+        for(const ch of line+","){
+          if(ch==='"'){inQ=!inQ;}
+          else if(ch===","&&!inQ){c.push(cur.trim());cur="";}
+          else{cur+=ch;}
+        }
+        return c;
+      };
+
+      const header=parseRow(lines[0].replace(/^\uFEFF/,""));
+      const idx=h=>header.findIndex(x=>x.replace(/^"|"$/g,"")=== h);
+      const iDate=idx("Reporting Date");
+      const iQty =idx("Quantity");
+      const iEarn=idx("Earnings (USD)");
+      const iTeam=idx("Team Percentage");
+
+      if (iDate===-1||iQty===-1) { showToast("❌ Formato no reconocido"); return; }
+
+      const byDate={};
+      lines.slice(1).forEach(line=>{
+        const c=parseRow(line);
+        const date=(c[iDate]||"").trim();
+        if (!date||!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+        const qty =parseInt(c[iQty])||0;
+        const earn=parseFloat(c[iEarn])||0;
+        const team=parseInt(c[iTeam])||100;
+        if (!byDate[date]) byDate[date]={streams:0,earnings:0};
+        byDate[date].streams +=Math.round(qty*(team/100));
+        byDate[date].earnings+=earn;
+      });
+
+      entries=entries.filter(ex=>ex.platform!==platId);
+      let added=0;
+      Object.entries(byDate).forEach(([date,v])=>{
+        entries.push({date,platform:platId,streams:v.streams,earnings:v.earnings});
+        added++;
+      });
+
+      if (!added) { showToast("❌ No se pudieron leer filas"); return; }
+      entries.sort((a,b)=>a.date.localeCompare(b.date));
+
+      selPlatform=platId; currentMetric="streams";
+      buildPills();
+      const pMap={7:0,28:1,90:2,180:3,365:4,730:5};
+      const period=added>365?730:added>180?365:added>90?180:added>28?90:28;
+      currentPeriod=period;
+      document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active"));
+      const tabs=document.querySelectorAll(".ptab");
+      if(tabs[pMap[period]??4]) tabs[pMap[period]??4].classList.add("active");
+
+      save(); render(); renderHistory();
+      const totalEarn=Object.values(byDate).reduce((s,v)=>s+v.earnings,0);
+      const totalStreams=Object.values(byDate).reduce((s,v)=>s+v.streams,0);
+      document.getElementById(statusId).textContent=`✅ ${added} fechas · ${totalStreams.toLocaleString()} streams · $${totalEarn.toFixed(2)}`;
+      showToast(successMsg);
+      if(document.getElementById('btab-import')?.classList.contains('active')) renderDatosPanel();
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); console.error(err); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+
+// ── IMPORT PAGOS REALES (DISTROKID FORMAT) ────────────────
+function importPaymentCSV(input, platId) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=async e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n").filter(l=>l.trim());
+      if (lines.length<2) { showToast("❌ CSV vacío"); return; }
+
+      const parseRow=line=>{
+        const c=[]; let cur="",inQ=false;
+        for(const ch of line+","){
+          if(ch==='"'){inQ=!inQ;}
+          else if(ch===","&&!inQ){c.push(cur.trim());cur="";}
+          else{cur+=ch;}
+        }
+        return c;
+      };
+
+      const header=parseRow(lines[0].replace(/^\uFEFF/,""));
+      const idx=h=>header.findIndex(x=>x.replace(/^"|"$/g,"")===h);
+      const iRep  =idx("Reporting Date");
+      const iSale =idx("Sale Month");
+      const iQty  =idx("Quantity");
+      const iEarn =idx("Earnings (USD)");
+      const iTeam =idx("Team Percentage");
+
+      if (iRep===-1||iEarn===-1) { showToast("❌ Formato DistroKid no reconocido"); return; }
+
+      // Group by sale_month → sum real earnings + streams
+      const bySaleMonth={};
+      lines.slice(1).forEach(line=>{
+        const c=parseRow(line);
+        const saleM=(c[iSale]||"").trim();
+        const repD =(c[iRep ]||"").trim();
+        if (!saleM||!/^\d{4}-\d{2}$/.test(saleM)) return;
+        const earn =parseFloat(c[iEarn])||0;
+        const qty  =parseInt(c[iQty])||0;
+        const team =parseInt(c[iTeam])||100;
+        if (!bySaleMonth[saleM]) bySaleMonth[saleM]={saleMonth:saleM,reportingDate:repD,platform:platId,streams:0,earnings:0};
+        bySaleMonth[saleM].streams +=Math.round(qty*(team/100));
+        bySaleMonth[saleM].earnings+=earn;
+        // Use latest reporting date for this sale month
+        if (repD>bySaleMonth[saleM].reportingDate) bySaleMonth[saleM].reportingDate=repD;
+      });
+
+      // Remove old payments for this platform and add new
+      payments=payments.filter(p=>p.platform!==platId);
+      Object.values(bySaleMonth).forEach(p=>payments.push(p));
+
+      await savePayments();
+      try { updatePayStatus(); } catch(e) {}
+      if(document.getElementById("btab-pagos")?.classList.contains("active")) renderPagos();
+
+      const total=Object.values(bySaleMonth).reduce((s,v)=>s+v.earnings,0);
+      const months=Object.keys(bySaleMonth).length;
+      showToast(`✅ ${months} meses · $${total.toFixed(2)} reales`);
+      if(document.getElementById('btab-import')?.classList.contains('active')) renderDatosPanel();
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); console.error(err); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+function updatePayStatus() {
+  const plats=["spotify","amazon","amazon_prime","apple","youtube"];
+  plats.forEach(platId=>{
+    const el=document.getElementById("pay-status-"+platId);
+    const card=el?.closest(".pay-import-card");
+    const platPays=payments.filter(p=>p.platform===platId);
+    if (!el) return;
+    if (!platPays.length) {
+      el.textContent="Sin pagos cargados";
+      card?.classList.remove("loaded");
+    } else {
+      const total=platPays.reduce((s,p)=>s+p.earnings,0);
+      const months=platPays.length;
+      el.textContent=`✅ ${months} meses · $${total.toFixed(2)}`;
+      card?.classList.add("loaded");
+    }
+  });
+}
+
+function clearAllPayments() {
+  payments=[];
+  savePayments();
+  try { updatePayStatus(); } catch(e) {}
+  if(document.getElementById("btab-pagos")?.classList.contains("active")) renderPagos();
+  if(document.getElementById("btab-import")?.classList.contains("active")) renderDatosPanel();
+  showToast("🗑️ Pagos reales eliminados");
+}
+
+function clearOnePlatformPayments(platId) {
+  payments=payments.filter(p=>p.platform!==platId);
+  savePayments();
+  try { updatePayStatus(); } catch(e) {}
+  if(document.getElementById("btab-pagos")?.classList.contains("active")) renderPagos();
+  if(document.getElementById("btab-import")?.classList.contains("active")) renderDatosPanel();
+  showToast("🗑️ Pagos de "+platId+" eliminados");
+}
+
+
+// ── DATOS PANEL — context-aware per platform ─────────────
+function renderDatosPanel() {
+  const box = document.getElementById("datos-panel");
+  if (!box) return;
+
+  const CARDS = {
+    spotify: {
+      color:"#1db954", bg:"rgba(29,185,84,0.07)", border:"rgba(29,185,84,0.25)",
+      emoji:"🎵", title:"Importar CSV Spotify",
+      sub:"audience-timeline.csv · Spotify for Artists",
+      csvId:"spotify-csv", statusId:"spotify-status",
+      payId:"pay-spotify-csv", payStatusId:"pay-status-spotify",
+      clear:"clearPlatform('spotify')", platLabel:"Spotify"
+    },
+    amazon: {
+      color:"#ff9900", bg:"rgba(255,153,0,0.07)", border:"rgba(255,153,0,0.25)",
+      emoji:"📦", title:"Importar CSV Amazon Music",
+      sub:"Trendlines · Fecha, Reproducciones, Oyentes",
+      csvId:"amazon-csv", statusId:"amazon-status",
+      payId:"pay-amazon-csv", payStatusId:"pay-status-amazon",
+      clear:"clearPlatform('amazon')", platLabel:"Amazon Music"
+    },
+    amazon_prime: {
+      color:"#00a8e0", bg:"rgba(0,168,224,0.07)", border:"rgba(0,168,224,0.25)",
+      emoji:"🔵", title:"Importar CSV Amazon Prime",
+      sub:"results.csv · Amazon Prime Music",
+      csvId:"amazon-prime-csv", statusId:"amazon-prime-status",
+      payId:"pay-amazon_prime-csv", payStatusId:"pay-status-amazon_prime",
+      clear:"clearPlatform('amazon_prime')", platLabel:"Amazon Prime"
+    },
+    apple: {
+      color:"#fc3c44", bg:"rgba(252,60,68,0.07)", border:"rgba(252,60,68,0.25)",
+      emoji:"🍎", title:"Importar CSV Apple Music",
+      sub:"results.csv · Apple Music / iTunes",
+      csvId:"apple-csv", statusId:"apple-status",
+      payId:"pay-apple-csv", payStatusId:"pay-status-apple",
+      clear:"clearPlatform('apple')", platLabel:"Apple Music"
+    },
+    youtube: {
+      color:"#ff3333", bg:"rgba(255,51,51,0.07)", border:"rgba(255,51,51,0.25)",
+      emoji:"▶️", title:"Importar CSV YouTube",
+      sub:"Datos_del_gráfico.csv · YouTube Studio",
+      csvId:"youtube-csv", statusId:"youtube-status",
+      payId:"pay-youtube-csv", payStatusId:"pay-status-youtube",
+      clear:"clearPlatform('youtube')", platLabel:"YouTube"
+    },
+  };
+
+  const platList = ["spotify","amazon","amazon_prime","apple","youtube"];
+
+  if (selPlatform === "all" || selPlatform === "manual") {
+    // Overview: show status of all platforms
+    const rows = platList.map(pid => {
+      const c = CARDS[pid];
+      const hasData = entries.some(e=>e.platform===pid);
+      const hasPay  = payments.some(p=>p.platform===pid);
+      const dataCount = entries.filter(e=>e.platform===pid).length;
+      const payTotal = payments.filter(p=>p.platform===pid).reduce((s,p)=>s+p.earnings,0);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px">${c.emoji}</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:${c.color}">${c.platLabel}</div>
+          <div style="font-size:10px;color:var(--muted)">
+            ${hasData?`✅ ${dataCount} días cargados`:`<span style="opacity:0.5">Sin datos</span>`}
+            ${hasPay?` · 💰 $${payTotal.toFixed(2)} en pagos`:""}
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:right">
+          <div style="display:flex;gap:8px">
+            ${hasData?`<span style="cursor:pointer;color:#e55;font-size:12px" title="Borrar streams" onclick="${c.clear}">🗑️</span>`:`<span style="opacity:0.15;font-size:12px">🗑️</span>`}
+            ${hasPay?`<span style="cursor:pointer;color:rgba(229,85,85,0.6);font-size:11px" title="Borrar pagos" onclick="clearOnePlatformPayments('${pid}')">💸</span>`:""}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    box.innerHTML = `
+      <div style="padding:12px 16px 8px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">
+        Estado de plataformas
+      </div>
+      <div style="margin:0 16px 12px;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:var(--card)">
+        ${rows}
+      </div>
+      <div style="padding:0 16px 8px;font-size:10px;color:var(--muted)">
+        👆 Selecciona una plataforma arriba para importar datos
+      </div>`;
+    return;
+  }
+
+  const c = CARDS[selPlatform];
+  if (!c) { box.innerHTML=""; return; }
+
+  const hasData = entries.some(e=>e.platform===selPlatform);
+  const hasPay  = payments.some(p=>p.platform===selPlatform);
+  const statusTxt = document.getElementById(c.statusId)?.textContent || "";
+  const payStatusTxt = document.getElementById(c.payStatusId)?.textContent || "";
+
+  box.innerHTML = `
+    <div style="animation:fadeSlideIn 0.25s ease">
+
+      <!-- Stream data card -->
+      <div class="import-card" style="background:linear-gradient(135deg,${c.bg},rgba(10,12,24,0.9));border:1px solid ${c.border};box-shadow:0 0 30px ${c.bg};">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:22px">${c.emoji}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:${c.color}">${c.title}</div>
+            <div style="font-size:10px;color:var(--muted)">${c.sub}</div>
+          </div>
+        </div>
+        <label class="import-label" style="background:${c.bg};border:1px dashed ${c.border};color:${c.color};cursor:pointer;display:block;text-align:center;padding:12px;border-radius:12px;margin-bottom:8px" onclick="document.getElementById('${c.csvId}').click()">
+          📁 Seleccionar CSV de ${c.platLabel}
+        </label>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:8px">${statusTxt||"Sube tu archivo CSV"}</div>
+        <button class="btn-clear" onclick="${c.clear}" ${hasData?"":"disabled style='opacity:0.3;cursor:default'"}>🗑️ Limpiar datos ${c.platLabel}</button>
+      </div>
+
+      <!-- Pagos reales card -->
+      <div style="margin:0 16px 8px;padding:14px;border-radius:16px;background:var(--card);border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+          💸 Pagos reales (DistroKid)
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px;border-radius:10px;border:1px dashed var(--border);background:rgba(0,230,118,0.04)" onclick="document.getElementById('${c.payId}').click()">
+          <span style="font-size:18px">${c.emoji}</span>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:700;color:${hasPay?"var(--green)":"var(--muted)"}">${hasPay?"✅ "+payStatusTxt:"Sin pagos cargados"}</div>
+            <div style="font-size:9px;color:var(--muted)">results_${selPlatform}.csv de DistroKid</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="font-size:10px;color:var(--muted);padding:4px 8px;border:1px solid var(--border);border-radius:8px;white-space:nowrap">📁 CSV</div>
+            ${hasPay?`<div style="font-size:10px;color:#e55;padding:4px 8px;border:1px solid rgba(229,85,85,0.3);border-radius:8px;cursor:pointer;white-space:nowrap" onclick="event.stopPropagation();clearOnePlatformPayments('${selPlatform}')">🗑️</div>`:""}
+          </div>
+        </label>
+      </div>
+
+    </div>`;
+}
+
+// ── HISTORY ───────────────────────────────────────────────
+function renderHistory() {
+  const list=document.getElementById("hist-list");
+  const sorted=[...entries].reverse().slice(0,50);
+  if (!sorted.length) {
+    list.innerHTML='<div class="empty-state">Sin registros aún.<br>Importa un CSV o añade datos en la pestaña Datos 📥</div>';
+    return;
+  }
+  const rate=PLATFORMS.find(p=>p.id===selPlatform)?.rate||0;
+  list.innerHTML=sorted.map((e,i) => {
+    const realIdx=entries.length-1-i;
+    const plat=PLATFORMS.find(p=>p.id===e.platform)||PLATFORMS[0];
+    const val=getVal(e);
+    const prev=entries[realIdx-1];
+    let chg="";
+    if (prev) {
+      const diff=val-getVal(prev);
+      const pct=getVal(prev)>0?Math.round((diff/getVal(prev))*100):0;
+      chg=`<span class="hist-chg ${diff>=0?'up':'dn'}">${diff>=0?"▲":"▼"}${Math.abs(pct)}%</span>`;
+    }
+    const dt=new Date(e.date+"T00:00:00");
+    const ds=`${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear().toString().slice(2)}`;
+    const earnStr=rate>0&&currentMetric==="streams"?`<span class="hist-earn">${fmtMoney(val*rate)}</span>`:"";
+    return `<div class="hist-item" style="--plat-color:${plat.color}">
+      <span class="hist-date">${ds}</span>
+      <span class="hist-plat">${plat.emoji}</span>
+      <span class="hist-val">${fmtNum(val)}</span>
+      ${earnStr}${chg}
+      <span class="hist-del" onclick="deleteEntry(${realIdx})">✕</span>
+    </div>`;
+  }).join("");
+}
+
+function deleteEntry(idx) {
+  entries.splice(idx,1); save(); render(); renderHistory();
+  if (tg) tg.HapticFeedback?.impactOccurred("light");
+}
+
+// ── SONGS ─────────────────────────────────────────────────
+function importSongsCSV(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e => {
+    try {
+      const text=e.target.result;
+      const lines=text.trim().split("\n");
+      const header=lines[0].replace(/^\uFEFF/,"").split(",").map(h=>h.trim().replace(/^"|"$/g,""));
+      const idx=h=>header.findIndex(x=>x===h);
+      const iSong=idx("song"); const iListen=idx("listeners"); const iStream=idx("streams");
+      const iSaves=idx("saves"); const iRelease=idx("release_date");
+      if (iSong===-1) { showToast("❌ CSV de canciones no reconocido"); return; }
+      songs=[];
+      lines.slice(1).forEach(line => {
+        if (!line.trim()) return;
+        // Robust quoted CSV parser
+        const c=[]; let cur="",inQ=false;
+        for(const ch of line+","){
+          if(ch==='"'){inQ=!inQ;}
+          else if(ch===","&&!inQ){c.push(cur);cur="";}
+          else{cur+=ch;}
+        }
+        const clean=v=>(v||"").trim().replace(/^"|"$/g,"");
+        songs.push({ song:clean(c[iSong]), listeners:parseInt(clean(c[iListen]))||0,
+          streams:parseInt(clean(c[iStream]))||0, saves:parseInt(clean(c[iSaves]))||0,
+          release_date:clean(c[iRelease]) });
+      });
+      saveSongs(); renderSongs();
+      document.getElementById("songs-status").textContent=`✅ ${songs.length} canciones importadas`;
+      showToast(`✅ ${songs.length} canciones cargadas`);
+      if (tg) tg.HapticFeedback?.notificationOccurred("success");
+    } catch(err) { showToast("❌ Error: "+err.message); }
+  };
+  reader.readAsText(file,"UTF-8");
+}
+
+function renderSongs() {
+  const list=document.getElementById("songs-list");
+  const sortRow=document.getElementById("songs-sort-row");
+  if (!songs.length) {
+    sortRow.style.display="none";
+    const sum=document.getElementById("songs-summary"); if(sum) sum.innerHTML="";
+    list.innerHTML='<div class="empty-state">Importa tu songs-28day.csv<br>para ver el ranking de canciones 🎤</div>';
+    return;
+  }
+  sortRow.style.display="flex";
+
+  // Summary totals
+  const totalStreams=songs.reduce((a,s)=>a+s.streams,0);
+  const totalListeners=songs.reduce((a,s)=>a+s.listeners,0);
+  const totalSaves=songs.reduce((a,s)=>a+s.saves,0);
+  const summary=document.getElementById("songs-summary");
+  if(summary) summary.innerHTML=`<div class="songs-summary">
+    <div class="ss-card"><div class="ss-n">${fmtNum(totalStreams)}</div><div class="ss-l">🎧 Total Streams</div></div>
+    <div class="ss-card"><div class="ss-n">${fmtNum(totalListeners)}</div><div class="ss-l">👥 Total Oyentes</div></div>
+    <div class="ss-card"><div class="ss-n">${fmtNum(totalSaves)}</div><div class="ss-l">💾 Total Saves</div></div>
+  </div>`;
+
+  const sorted=[...songs].sort((a,b)=>b[songsSortBy]-a[songsSortBy]);
+  const maxVal=sorted[0]?.[songsSortBy]||1;
+  list.innerHTML=sorted.map((s,i) => {
+    const rankClass=i===0?"gold":i===1?"silver":i===2?"bronze":"other";
+    const rankEmoji=i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`;
+    const barPct=Math.round((s[songsSortBy]/maxVal)*100);
+    const year=s.release_date?.split("-")[0];
+    const validYear=year&&parseInt(year)>1970?year:"";
+    return `<div class="song-item">
+      <div class="song-rank ${rankClass}">${rankEmoji}</div>
+      <div class="song-info">
+        <div class="song-name">${s.song}</div>
+        <div class="song-bar-wrap"><div class="song-bar" style="width:${barPct}%"></div></div>
+        ${validYear?`<div class="song-meta"><span class="song-year-badge">${validYear}</span></div>`:""}
+      </div>
+      <div style="text-align:right">
+        <div class="song-streams">${fmtNum(s[songsSortBy])}</div>
+        ${s.saves>0?`<div class="song-saves">💾 ${fmtNum(s.saves)}</div>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function setSongsSort(by, btn) {
+  songsSortBy=by;
+  document.querySelectorAll(".ssort-btn").forEach(b=>{b.classList.remove("active");});
+  btn.classList.add("active");
+  renderSongs();
+  if (tg) tg.HapticFeedback?.impactOccurred("light");
+}
+
+function clearSongs() {
+  if (!songs.length) { showToast("Sin canciones"); return; }
+  songs=[]; saveSongs(); renderSongs();
+  document.getElementById("songs-status").textContent="Sube tu CSV de canciones para ver el ranking";
+  showToast("🗑️ Ranking limpiado");
+}
+
+function clearPlatform(platId) {
+  const before=entries.length;
+  entries=entries.filter(e=>e.platform!==platId);
+  if (entries.length===before) { showToast("Sin datos de "+platId); return; }
+
+  // Reset status text and file input for this platform
+  const statusMap={
+    spotify:  {el:"spotify-status",  txt:"Sube tu CSV de Spotify for Artists",     inp:"spotify-csv"},
+    amazon:   {el:"amazon-status",   txt:"Sube tu CSV de Amazon Music for Artists", inp:"amazon-csv"},
+    youtube:      {el:"youtube-status",      txt:"Sube tu CSV de YouTube Studio",           inp:"youtube-csv"},
+    apple:        {el:"apple-status",        txt:"Sube tu CSV de Apple Music",               inp:"apple-csv"},
+    amazon_prime: {el:"amazon-prime-status", txt:"Sube tu CSV de Amazon Prime",              inp:"amazon-prime-csv"},
+  };
+  const m=statusMap[platId];
+  if (m) {
+    const s=document.getElementById(m.el); if(s) s.textContent=m.txt;
+    const i=document.getElementById(m.inp); if(i) i.value="";
+  }
+
+  // If viewing this platform, switch to all
+  if (selPlatform===platId) {
+    selPlatform="all"; buildPills();
+  }
+
+  save(); render(); renderHistory(); buildPills(); renderDatosPanel();
+  showToast("🗑️ Datos de "+platId+" eliminados");
+}
+
+function setPeriod(days, btn) {
+  currentPeriod=days; zoomReset();
+  document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active")); btn.classList.add("active");
+  render(); renderHistory();
+}
+
+function showBTab(name, btn) {
+  document.querySelectorAll(".btab").forEach(t=>t.classList.remove("active")); btn.classList.add("active");
+  document.querySelectorAll(".btab-content").forEach(c=>c.classList.remove("active"));
+  document.getElementById("btab-"+name).classList.add("active");
+  if (name==="import")   renderDatosPanel();
+  if (name==="history")  renderHistory();
+  if (name==="songs")    renderSongs();
+  if (name==="pagos")   renderPagos();
+}
+
+function showToast(msg) {
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2500);
+}
+
+window.addEventListener("resize",()=>{ const d=getFiltered(); drawChart(d); });
+setupTooltip();
+setupScrollbar();
+load();
+</script>
+</body>
+</html>

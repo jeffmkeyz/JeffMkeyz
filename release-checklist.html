@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Release Checklist · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;
+      --bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);
+      --muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;
+    }
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+
+    /* HEADER */
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--mint);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+
+    /* PROGRESS RING */
+    #progressWrap{padding:24px 18px 8px;display:flex;align-items:center;gap:20px;}
+    .ring-wrap{position:relative;width:80px;height:80px;flex-shrink:0;}
+    .ring-wrap svg{transform:rotate(-90deg);}
+    .ring-bg{fill:none;stroke:var(--dim);stroke-width:6;}
+    .ring-fill{fill:none;stroke:var(--mint);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .4s cubic-bezier(.16,1,.3,1);}
+    .ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .ring-pct{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:#fff;}
+    .ring-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:.08em;}
+    .progress-info{flex:1;}
+    .progress-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:4px;}
+    .progress-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);line-height:1.5;}
+    .progress-bar-wrap{margin:0 18px 4px;height:3px;background:var(--dim);border-radius:2px;overflow:hidden;}
+    .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--mint),var(--purple));border-radius:2px;transition:width .4s cubic-bezier(.16,1,.3,1);}
+
+    /* RELEASE SELECTOR */
+    #releaseWrap{padding:12px 18px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+    #releaseWrap::-webkit-scrollbar{display:none;}
+    .rpill{flex-shrink:0;padding:7px 14px;background:var(--s);border:1px solid var(--border);border-radius:20px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;color:var(--muted);transition:all .2s;}
+    .rpill.active{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.35);color:var(--mint);}
+
+    /* PHASE LABEL */
+    .phase-row{display:flex;align-items:center;gap:10px;margin:18px 18px 10px;}
+    .phase-line{flex:1;height:1px;background:var(--border);}
+    .phase-txt{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.2em;white-space:nowrap;}
+    .phase-txt.pre{color:var(--purple);}
+    .phase-txt.launch{color:var(--mint);}
+    .phase-txt.post{color:var(--gold);}
+    .phase-count{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);}
+
+    /* CHECK ITEM */
+    #main{padding:0 18px 100px;}
+    .check-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--s);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+    .check-item:active{transform:scale(.98);}
+    .check-item.done{opacity:.45;}
+    .check-item.done .ci-title{text-decoration:line-through;color:var(--muted);}
+    .check-item.critical{border-color:rgba(255,45,120,.2);}
+    .check-item.critical.done{border-color:var(--border);}
+
+    .ci-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--dim);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent;}
+    .check-item.done .ci-box{background:var(--mint);border-color:var(--mint);}
+    .ci-check{font-size:13px;color:#000;display:none;}
+    .check-item.done .ci-check{display:block;}
+
+    .ci-body{flex:1;min-width:0;}
+    .ci-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;}
+    .ci-title{font-size:13px;font-weight:700;color:#fff;line-height:1.3;}
+    .ci-badge{font-family:'Space Mono',monospace;font-size:7px;font-weight:700;letter-spacing:.1em;padding:2px 6px;border-radius:4px;}
+    .badge-critical{color:var(--pink);background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.2);}
+    .badge-platform{color:var(--mint);background:rgba(0,245,160,.08);border:1px solid rgba(0,245,160,.15);}
+    .badge-legal{color:var(--gold);background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.15);}
+    .badge-marketing{color:#CC44FF;background:rgba(204,68,255,.08);border:1px solid rgba(204,68,255,.15);}
+    .ci-desc{font-size:11px;color:var(--muted);line-height:1.6;}
+
+    /* BOTTOM BAR */
+    #bottomBar{position:fixed;bottom:0;left:0;right:0;padding:14px 18px 32px;background:linear-gradient(to top,var(--bg) 70%,transparent);display:flex;gap:8px;}
+    .btn{flex:1;padding:13px 0;border-radius:12px;border:none;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;}
+    .btn:active{transform:scale(.96);}
+    .bmint{background:var(--mint);color:#000;}
+    .bghost{background:var(--s);border:1px solid var(--border);color:var(--muted);}
+
+    /* COMPLETE STATE */
+    #completeCard{display:none;margin:24px 18px;padding:24px;background:rgba(0,245,160,.04);border:1px solid rgba(0,245,160,.2);border-radius:20px;text-align:center;}
+    #completeCard .cc-icon{font-size:40px;margin-bottom:12px;}
+    #completeCard .cc-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:6px;}
+    #completeCard .cc-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;}
+  </style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">◈ DISTRIBUCIÓN · FREE</div>
+      <div class="hdr-title">Release Checklist</div>
+    </div>
+    <div id="hdrRight" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<div id="progressWrap">
+  <div class="ring-wrap">
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <circle class="ring-bg" cx="40" cy="40" r="34"/>
+      <circle class="ring-fill" id="ringFill" cx="40" cy="40" r="34"
+        stroke-dasharray="213.6" stroke-dashoffset="213.6"/>
+    </svg>
+    <div class="ring-text">
+      <div class="ring-pct" id="ringPct">0%</div>
+      <div class="ring-lbl">LISTO</div>
+    </div>
+  </div>
+  <div class="progress-info">
+    <div class="progress-title" id="progressTitle">Pre-lanzamiento</div>
+    <div class="progress-sub" id="progressSub">Completa todos los pasos<br/>antes del día de lanzamiento.</div>
+  </div>
+</div>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="barFill" style="width:0%"></div></div>
+
+<div id="releaseWrap">
+  <div class="rpill active" data-release="single" onclick="switchRelease('single')">SINGLE</div>
+  <div class="rpill" data-release="ep" onclick="switchRelease('ep')">EP</div>
+  <div class="rpill" data-release="album" onclick="switchRelease('album')">ÁLBUM</div>
+  <div class="rpill" data-release="remix" onclick="switchRelease('remix')">REMIX</div>
+</div>
+
+<div id="completeCard">
+  <div class="cc-icon">🚀</div>
+  <div class="cc-title">¡Listo para lanzar!</div>
+  <div class="cc-sub">Todos los pasos completados.<br/>Tu lanzamiento está preparado.<br/>Buena suerte 🎵</div>
+</div>
+
+<div id="main"></div>
+
+<div id="bottomBar">
+  <button class="btn bghost" onclick="resetAll()">REINICIAR</button>
+  <button class="btn bmint" onclick="shareProgress()">COMPARTIR PROGRESO</button>
+</div>
+
+<script>
+(function(){
+  const tg = window.Telegram?.WebApp;
+  if(tg){ tg.ready(); tg.expand(); }
+  const toast = m => tg ? tg.showAlert(m) : alert(m);
+
+  const STORE_KEY = 'av_checklist_v1';
+  let activeRelease = 'single';
+  let checks = {};
+
+  try { checks = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(e){ checks = {}; }
+  const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(checks));
+
+  const PHASES = {
+    pre:    { label:'PRE-LANZAMIENTO', cls:'pre',    weeks:'4-2 semanas antes' },
+    launch: { label:'DÍA DEL LANZAMIENTO', cls:'launch', weeks:'El gran día' },
+    post:   { label:'POST-LANZAMIENTO', cls:'post',  weeks:'Primera semana' },
+  };
+
+  const CHECKLISTS = {
+    single: [
+      // PRE
+      { id:'s1',  phase:'pre',    critical:true,  badge:'critical',  icon:'🎵',
+        title:'Master final aprobado',
+        desc:'Verifica que el archivo de audio sea WAV 24bit/44.1kHz o mayor. Escúchalo en auriculares, altavoces y móvil antes de aprobar.' },
+      { id:'s2',  phase:'pre',    critical:true,  badge:'legal',     icon:'©️',
+        title:'ISRC registrado',
+        desc:'Regístrate en tu PRO o usa el de tu distribuidor. Cada versión del tema necesita su propio ISRC.' },
+      { id:'s3',  phase:'pre',    critical:true,  badge:'platform',  icon:'🖼️',
+        title:'Portada lista (3000x3000px)',
+        desc:'JPG/PNG mínimo 3000x3000px, RGB, menos de 10MB. Sin logos de terceros, sin texto explícito a menos que el tema lo sea.' },
+      { id:'s4',  phase:'pre',    critical:true,  badge:'platform',  icon:'📦',
+        title:'Subido al distribuidor',
+        desc:'DistroKid, TuneCore, CD Baby o tu distribuidor. Fecha de lanzamiento: siempre viernes. Anticipa mínimo 3-5 días hábiles.' },
+      { id:'s5',  phase:'pre',    critical:false, badge:'legal',     icon:'📝',
+        title:'Metadatos completos',
+        desc:'Título exacto, artista principal, featuring (si aplica), compositores, productores, género, año, sello (o tu nombre).' },
+      { id:'s6',  phase:'pre',    critical:false, badge:'marketing', icon:'🎯',
+        title:'Pitch a playlists editoriales',
+        desc:'Spotify for Artists: pitch mínimo 7 días antes del lanzamiento. Apple Music: a través de tu distribuidor. Solo un pitch por release.' },
+      { id:'s7',  phase:'pre',    critical:false, badge:'marketing', icon:'📱',
+        title:'Contenido de TikTok e Instagram preparado',
+        desc:'15s clip del hook listo para publicar. Caption redactado. Story de Spotify lista. No improvises el día del lanzamiento.' },
+      { id:'s8',  phase:'pre',    critical:false, badge:'marketing', icon:'🔗',
+        title:'Smart Link creado (Linktree / feature.fm)',
+        desc:'Un solo link que apunte a todas las plataformas. Actualiza tu bio de Instagram y TikTok con este link antes del lanzamiento.' },
+      { id:'s9',  phase:'pre',    critical:false, badge:'legal',     icon:'🎼',
+        title:'Letra registrada en tu PRO',
+        desc:'ASCAP, BMI, SESAC (USA) / SGAE (España) / SOCAN (Canadá). Registra compositores y porcentajes acordados por escrito.' },
+      // LAUNCH
+      { id:'s10', phase:'launch', critical:true,  badge:'platform',  icon:'✅',
+        title:'Verificar que está en todas las plataformas',
+        desc:'Spotify, Apple Music, YouTube Music, Amazon, Tidal, Deezer. Si falta en alguna, contacta a tu distribuidor inmediatamente.' },
+      { id:'s11', phase:'launch', critical:true,  badge:'marketing', icon:'⚡',
+        title:'Publicar TikTok: clip del hook (10:00)',
+        desc:'El primer post del día. 15 segundos, directo al hook, overlay de letra. Sin intros.' },
+      { id:'s12', phase:'launch', critical:true,  badge:'marketing', icon:'📲',
+        title:'Publicar Instagram Story con link a Spotify',
+        desc:'Portada animada + sticker de música + "YA DISPONIBLE". Link en bio actualizado.' },
+      { id:'s13', phase:'launch', critical:false, badge:'platform',  icon:'🎬',
+        title:'Subir visualizer a YouTube',
+        desc:'Video completo. Descripción con link a Spotify en primera línea. Tags del género.' },
+      { id:'s14', phase:'launch', critical:false, badge:'marketing', icon:'📢',
+        title:'Avisar a círculo cercano',
+        desc:'WhatsApp a fans, amigos y familia. Pide que compartan en las primeras horas — las primeras 24h son cruciales para el algoritmo.' },
+      // POST
+      { id:'s15', phase:'post',   critical:true,  badge:'platform',  icon:'📊',
+        title:'Revisar Spotify for Artists a las 24h',
+        desc:'Primeros streams, saves y adds a playlists. Si el tema entra a alguna playlist editorial, es señal de que el pitch funcionó.' },
+      { id:'s16', phase:'post',   critical:false, badge:'marketing', icon:'🔁',
+        title:'Repostear a fans que comparten',
+        desc:'Busca en menciones quién compartió. Répostalos en stories. Este engagement en las primeras 48h pesa mucho en el algoritmo.' },
+      { id:'s17', phase:'post',   critical:false, badge:'marketing', icon:'💬',
+        title:'Reaccionar a comentarios en TikTok',
+        desc:'Responde video a los comentarios más curiosos o graciosos. Esto dispara el engagement orgánico.' },
+      { id:'s18', phase:'post',   critical:false, badge:'platform',  icon:'📈',
+        title:'Revisar Chartmetric / Soundcharts',
+        desc:'Seguimiento de playlists donde entró el tema, países con más streams, y fuentes de descubrimiento.' },
+    ],
+    ep: [
+      { id:'e1',  phase:'pre',    critical:true,  badge:'critical',  icon:'🎵', title:'Todos los masters aprobados', desc:'Escucha el EP completo de principio a fin. Verifica volumen consistente entre tracks y transiciones.' },
+      { id:'e2',  phase:'pre',    critical:true,  badge:'legal',     icon:'©️', title:'ISRC individual por track', desc:'Cada track necesita su propio ISRC. Si tienes 5 tracks, necesitas 5 ISRCs.' },
+      { id:'e3',  phase:'pre',    critical:true,  badge:'platform',  icon:'🖼️', title:'Portada del EP lista', desc:'3000x3000px. El arte del EP debe reflejar la identidad visual de todos los tracks.' },
+      { id:'e4',  phase:'pre',    critical:true,  badge:'platform',  icon:'📦', title:'Subido al distribuidor con tracklist correcto', desc:'Verifica el orden de los tracks, los títulos exactos y todos los featuring correctamente acreditados.' },
+      { id:'e5',  phase:'pre',    critical:false, badge:'marketing', icon:'🎯', title:'Single de impacto elegido para el pitch', desc:'Elige el track más accesible para pitchear a Spotify Editorial. El EP entero no se puede pitchear, solo un track.' },
+      { id:'e6',  phase:'pre',    critical:false, badge:'marketing', icon:'📱', title:'Plan de contenido de los 7 días previos', desc:'Cada día de la semana antes del lanzamiento, sube un snippet o BTS de un track diferente.' },
+      { id:'e7',  phase:'launch', critical:true,  badge:'platform',  icon:'✅', title:'EP disponible en todas las plataformas', desc:'Verifica el tracklist completo en Spotify. A veces los tracks se publican desordenados.' },
+      { id:'e8',  phase:'launch', critical:true,  badge:'marketing', icon:'⚡', title:'Video del track principal en TikTok', desc:'El track que elegiste como single de impacto es el primero en TikTok.' },
+      { id:'e9',  phase:'post',   critical:true,  badge:'platform',  icon:'📊', title:'Analizar qué track tiene más streams', desc:'El track con más engagement en la primera semana es el que debes seguir promocionando.' },
+      { id:'e10', phase:'post',   critical:false, badge:'marketing', icon:'🔁', title:'Semana 2: promover el segundo track', desc:'Sigue el plan de Semana Explosiva para el track con más potencial de los que no promocionaste el día 1.' },
+    ],
+    album: [
+      { id:'a1',  phase:'pre',    critical:true,  badge:'critical',  icon:'🎵', title:'Masterización completa aprobada', desc:'El álbum completo en secuencia. Verifica coherencia de volumen, EQ y dinámica entre todos los tracks.' },
+      { id:'a2',  phase:'pre',    critical:true,  badge:'legal',     icon:'©️', title:'ISRC por cada track', desc:'Un ISRC único por track. Si hay bonus tracks o versiones alternativas, necesitan ISRCs propios.' },
+      { id:'a3',  phase:'pre',    critical:true,  badge:'legal',     icon:'📝', title:'Todos los colaboradores acreditados', desc:'Compositores, productores, featuring, ingenieros de mezcla y masterización. Errores aquí son costosos de corregir.' },
+      { id:'a4',  phase:'pre',    critical:true,  badge:'platform',  icon:'🖼️', title:'Arte del álbum + artes individuales', desc:'Portada principal 3000x3000px. Considera arte individual por track para redes.' },
+      { id:'a5',  phase:'pre',    critical:false, badge:'marketing', icon:'🎯', title:'Single/Singles previos lanzados', desc:'Lanza 1-3 singles en las semanas previas para calentar al público y conseguir playlists antes del álbum.' },
+      { id:'a6',  phase:'pre',    critical:false, badge:'marketing', icon:'📢', title:'Press release enviado a medios', desc:'EPK + press release a blogs musicales, revistas digitales y playlist curators de tu género.' },
+      { id:'a7',  phase:'launch', critical:true,  badge:'platform',  icon:'✅', title:'Álbum completo en todas las plataformas', desc:'Verifica tracklist completo, orden correcto y que todos los featuring aparecen correctamente.' },
+      { id:'a8',  phase:'launch', critical:false, badge:'marketing', icon:'🎬', title:'Visualizer o video del track principal', desc:'El track principal necesita un video en YouTube el día del lanzamiento.' },
+      { id:'a9',  phase:'post',   critical:true,  badge:'platform',  icon:'📊', title:'Analizar los 3 tracks con más streams', desc:'Estos son los que vas a seguir promocionando en las semanas siguientes.' },
+      { id:'a10', phase:'post',   critical:false, badge:'marketing', icon:'🎵', title:'Plan de singles para los próximos 60 días', desc:'Un álbum no se promociona en un día. Planifica qué track promover cada semana durante los próximos 2 meses.' },
+    ],
+    remix: [
+      { id:'r1',  phase:'pre',    critical:true,  badge:'legal',     icon:'©️', title:'Autorización del artista original', desc:'OBLIGATORIO antes de cualquier otra cosa. Sin permiso escrito del propietario del copyright no puedes distribuir.' },
+      { id:'r2',  phase:'pre',    critical:true,  badge:'legal',     icon:'📝', title:'Acuerdo de remix firmado', desc:'Define el % de royalties, el crédito en el título ("Remix by [tu nombre]") y las plataformas autorizadas.' },
+      { id:'r3',  phase:'pre',    critical:true,  badge:'platform',  icon:'🎵', title:'Master del remix aprobado', desc:'Mismo estándar que cualquier lanzamiento: WAV 24bit, LUFS apropiado para el género.' },
+      { id:'r4',  phase:'pre',    critical:true,  badge:'platform',  icon:'🖼️', title:'Portada con créditos correctos', desc:'Debe incluir el nombre del artista original y "Remix" claramente. Muchos distribuidores rechazan remixes sin créditos.' },
+      { id:'r5',  phase:'pre',    critical:false, badge:'marketing', icon:'📱', title:'Coordinar publicación con el artista original', desc:'Idealmente el artista original comparte el remix. Coordina el horario de publicación y los posts.' },
+      { id:'r6',  phase:'launch', critical:true,  badge:'platform',  icon:'✅', title:'Verificar créditos en todas las plataformas', desc:'El título debe decir "[Título] (Remix)" y el featuring incluir al artista original.' },
+      { id:'r7',  phase:'launch', critical:false, badge:'marketing', icon:'⚡', title:'Tag al artista original en todos los posts', desc:'TikTok, Instagram, Twitter/X. Si el artista original tiene muchos seguidores esto puede multiplicar el alcance.' },
+      { id:'r8',  phase:'post',   critical:false, badge:'platform',  icon:'📊', title:'Comparar streams con el original', desc:'Los remixes bien hechos pueden superar al original. Monitorea en Chartmetric.' },
+    ],
+  };
+
+  function getKey(release, id){ return `${release}_${id}`; }
+
+  function toggleItem(release, id){
+    const key = getKey(release, id);
+    checks[key] = !checks[key];
+    save();
+    renderProgress();
+    const el = document.getElementById('ci-'+id);
+    if(el) el.classList.toggle('done', checks[key]);
+    const box = el?.querySelector('.ci-box');
+    const chk = el?.querySelector('.ci-check');
+    if(box) box.style.background = checks[key] ? 'var(--mint)' : 'transparent';
+    if(chk) chk.style.display   = checks[key] ? 'block' : 'none';
+    checkComplete();
+  }
+
+  function renderProgress(){
+    const items = CHECKLISTS[activeRelease] || [];
+    const total = items.length;
+    const done  = items.filter(i => checks[getKey(activeRelease, i.id)]).length;
+    const pct   = total ? Math.round(done/total*100) : 0;
+    const circumference = 213.6;
+    const offset = circumference - (circumference * pct / 100);
+    document.getElementById('ringFill').style.strokeDashoffset = offset;
+    document.getElementById('ringPct').textContent = pct+'%';
+    document.getElementById('barFill').style.width = pct+'%';
+    document.getElementById('hdrRight').textContent = `${done}/${total}`;
+
+    if(pct===100){
+      document.getElementById('progressTitle').textContent = '¡Todo listo! 🚀';
+      document.getElementById('progressSub').textContent = 'Tu lanzamiento está completamente preparado.';
+    } else if(pct >= 50){
+      document.getElementById('progressTitle').textContent = 'Buen progreso';
+      document.getElementById('progressSub').textContent = `Quedan ${total-done} pasos por completar.`;
+    } else {
+      document.getElementById('progressTitle').textContent = 'En preparación';
+      document.getElementById('progressSub').textContent = 'Completa todos los pasos\nantes del día de lanzamiento.';
+    }
+  }
+
+  function checkComplete(){
+    const items = CHECKLISTS[activeRelease] || [];
+    const allDone = items.every(i => checks[getKey(activeRelease, i.id)]);
+    document.getElementById('completeCard').style.display = allDone ? 'block' : 'none';
+  }
+
+  function renderMain(){
+    const el = document.getElementById('main');
+    const items = CHECKLISTS[activeRelease] || [];
+    const phases = ['pre','launch','post'];
+    let html = '';
+    phases.forEach(phase => {
+      const phaseItems = items.filter(i => i.phase === phase);
+      if(!phaseItems.length) return;
+      const doneCount = phaseItems.filter(i => checks[getKey(activeRelease, i.id)]).length;
+      const p = PHASES[phase];
+      html += `<div class="phase-row">
+        <div class="phase-line"></div>
+        <span class="phase-txt ${p.cls}">${p.label}</span>
+        <div class="phase-line"></div>
+        <span class="phase-count">${doneCount}/${phaseItems.length}</span>
+      </div>`;
+      phaseItems.forEach(item => {
+        const done = checks[getKey(activeRelease, item.id)];
+        html += `<div class="check-item ${done?'done':''} ${item.critical&&!done?'critical':''}" id="ci-${item.id}" onclick="toggleItem('${activeRelease}','${item.id}')">
+          <div class="ci-box" style="background:${done?'var(--mint)':'transparent'}">
+            <span class="ci-check" style="display:${done?'block':'none'}">✓</span>
+          </div>
+          <div class="ci-body">
+            <div class="ci-top">
+              <span class="ci-title">${item.icon} ${item.title}</span>
+              ${item.critical&&!done?'<span class="ci-badge badge-critical">CRÍTICO</span>':''}
+              <span class="ci-badge badge-${item.badge}">${item.badge.toUpperCase()}</span>
+            </div>
+            <div class="ci-desc">${item.desc}</div>
+          </div>
+        </div>`;
+      });
+    });
+    el.innerHTML = html;
+  }
+
+  window.switchRelease = type => {
+    activeRelease = type;
+    document.querySelectorAll('.rpill').forEach(p => p.classList.toggle('active', p.dataset.release===type));
+    document.getElementById('completeCard').style.display = 'none';
+    renderMain();
+    renderProgress();
+    checkComplete();
+  };
+
+  window.resetAll = () => {
+    const doReset = () => {
+      const items = CHECKLISTS[activeRelease] || [];
+      items.forEach(i => delete checks[getKey(activeRelease, i.id)]);
+      save(); renderMain(); renderProgress();
+      document.getElementById('completeCard').style.display = 'none';
+    };
+    if(tg?.showConfirm) tg.showConfirm('¿Reiniciar el checklist?', ok => { if(ok) doReset(); });
+    else if(confirm('¿Reiniciar el checklist?')) doReset();
+  };
+
+  window.shareProgress = () => {
+    const items = CHECKLISTS[activeRelease] || [];
+    const done  = items.filter(i => checks[getKey(activeRelease, i.id)]).length;
+    const pct   = Math.round(done/items.length*100);
+    const text  = `🎵 Release Checklist · Artist Vault\n${activeRelease.toUpperCase()} — ${pct}% completado\n${done}/${items.length} pasos listos\n\n@ArtistVaultBot`;
+    navigator.clipboard?.writeText(text).then(()=>toast('✅ Copiado al portapapeles'));
+  };
+
+  window.goBack = () => { if(tg) tg.close(); else history.back(); };
+
+  renderMain();
+  renderProgress();
+  checkComplete();
+})();
+</script>
+</body>
+</html>

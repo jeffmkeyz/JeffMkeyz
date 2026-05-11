@@ -61,10 +61,10 @@ def send_message(chat_id, text, reply_markup=None):
     requests.post(f"{API}/sendMessage", json=payload)
 
 def webapp_button():
-    return {"inline_keyboard": [[{"text": "🎛️ Abrir Artist Vault", "web_app": {"url": WEBAPP_URL}}]]}
+    return {"inline_keyboard": [[{"text": "🎛️ Abrir MusicCodexBox", "web_app": {"url": WEBAPP_URL}}]]}
 
 def set_menu_button():
-    payload = {"menu_button": {"type": "web_app", "text": "🎛️ Artist Vault", "web_app": {"url": WEBAPP_URL}}}
+    payload = {"menu_button": {"type": "web_app", "text": "🎛️ MusicCodexBox", "web_app": {"url": WEBAPP_URL}}}
     r = requests.post(f"{API}/setChatMenuButton", json=payload)
     log.info(f"Menu button: {r.json()}")
 
@@ -72,7 +72,7 @@ def set_menu_button():
 def handle_start(chat_id, user):
     is_pro = get_or_create_user(user.get("id"), user.get("username"), user.get("first_name"))
     plan = "⭐ *PRO ACTIVO*" if is_pro else "Plan Free — 5 herramientas disponibles"
-    send_message(chat_id, f"⚡ *ARTIST VAULT*\nHerramientas de industria sin filtros.\n\n{plan}", reply_markup=webapp_button())
+    send_message(chat_id, f"⚡ *MUSICCODEXBOX*\nHerramientas de industria sin filtros.\n\n{plan}", reply_markup=webapp_button())
 
 def handle_message(chat_id):
     send_message(chat_id, "Toca el botón para abrir la plataforma 👇", reply_markup=webapp_button())

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Royalty Calculator · Artist Vault</title>
+<title>Royalty Calculator · MusicCodexBox</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -235,7 +235,7 @@ input[type=range]::-webkit-slider-thumb {
 
 <div style="position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06);padding:14px 18px;display:flex;align-items:center;gap:10px;">
   <div onclick="(function(){var t=window.Telegram?.WebApp;if(t)t.close();else history.back();})()" style="width:30px;height:30px;border-radius:8px;background:#0D0D1A;border:1px solid rgba(255,255,255,.06);color:#4A4A6A;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">←</div>
-  <div style="flex:1;">
+  <div style="flex:1;text-align:center;">
     <div style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:#FFB830;">⟁ ANÁLISIS · PRO</div>
     <div style="font-size:16px;font-weight:800;color:#fff;font-family:'Syne',sans-serif;">Royalty Calculator</div>
   </div>
@@ -728,10 +728,10 @@ function shareResults() {
   const monthly   = document.getElementById("earn-month").textContent;
   const yearly    = document.getElementById("earn-year").textContent;
 
-  const msg = `${currentPlatEmoji} Simulación en ${currentPlatName} — Mkeyz Studio\n\n🎵 ${canciones} canciones\n👥 ${oyentes} oyentes\n🔁 ${rep} repeticiones/día\n🎧 ${total} streams/día\n\n☀️ Diario: ${daily}\n📅 Mensual: ${monthly}\n📆 Anual: ${yearly}\n\n🤖 @MkeyzDAWbot`;
+  const msg = `${currentPlatEmoji} Simulación en ${currentPlatName} — MusicCodexBox\n\n🎵 ${canciones} canciones\n👥 ${oyentes} oyentes\n🔁 ${rep} repeticiones/día\n🎧 ${total} streams/día\n\n☀️ Diario: ${daily}\n📅 Mensual: ${monthly}\n📆 Anual: ${yearly}\n\n🤖 @MusicCodexBox`;
 
   if (navigator.share) {
-    navigator.share({ title: "Mkeyz Studio — Simulador", text: msg })
+    navigator.share({ title: "MusicCodexBox — Simulador", text: msg })
       .catch(() => copyToClipboard(msg));
   } else {
     copyToClipboard(msg);

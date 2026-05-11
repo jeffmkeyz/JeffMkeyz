@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <title>Artist Vault</title>
+  <title>MusicCodexBox</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
   <style>
@@ -265,7 +265,7 @@
   <canvas id="shaderCanvas"></canvas>
   <div id="heroOverlay"></div>
   <div id="heroTop">
-    <div id="heroLabel">ARTIST VAULT</div>
+    <div id="heroLabel">MUSICCODEXBOX</div>
     <div id="heroBtns">
       <div id="proBadge">
         <div style="width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px var(--gold);animation:pulse 2s infinite"></div>
@@ -276,7 +276,7 @@
   </div>
   <div id="heroBottom">
     <div id="heroSub">// INDUSTRIA SIN FILTROS</div>
-    <div id="heroTitle"><span id="glitchText">ARTIST</span> <span>OS</span></div>
+    <div id="heroTitle"><span id="glitchText">MUSIC</span><span style="color:var(--mint)">CODEX</span></div>
     <canvas id="waveCanvas" height="34"></canvas>
   </div>
 </div>
@@ -341,7 +341,7 @@
 <div id="modalOverlay" onclick="handleOverlayClick(event)">
   <div id="modal">
     <div id="modalHandle"></div>
-    <div id="modalTag">◈ ARTIST VAULT PRO</div>
+    <div id="modalTag">◈ MUSICCODEXBOX PRO</div>
     <div id="modalTitle">Acceso completo.<br/>Sin filtros.</div>
     <div id="modalDesc">7 herramientas exclusivas con data que el 90% de la industria no conoce.</div>
     <div id="modalFeatures">
@@ -365,12 +365,12 @@
 <script>
 // ─── TOOLS DATA ────────────────────────────────────────────
 const TOOLS = [
-  { id:1,  tier:"free", cat:"analisis",     icon:"◈", name:"BPM & Key Detector",    desc:"Tempo y tonalidad de cualquier track al instante.",          url:"#" },
+  { id:1,  tier:"free", cat:"analisis",     icon:"◈", name:"BPM & Key Detector",    desc:"Tempo y tonalidad de cualquier track al instante.",          url:"bpm-key-detector.html" },
   { id:2,  tier:"free", cat:"distribucion", icon:"⊕", name:"Release Checklist",     desc:"Todo lo que necesitas antes de distribuir.",                 url:"release-checklist.html" },
   { id:3,  tier:"free", cat:"marketing",    icon:"◎", name:"Bio Generator",         desc:"Tu bio artística en inglés y español.",                      url:"bio-generator.html" },
   { id:4,  tier:"free", cat:"distribucion", icon:"◑", name:"ISRC Generator",        desc:"Registra y gestiona tus códigos ISRC.",                      url:"isrc-generator.html" },
   { id:5,  tier:"free", cat:"analisis",     icon:"◉", name:"Views Tracker",          desc:"Seguimiento de streams en todas las plataformas.",           url:"views-tracker.html" },
-  { id:6,  tier:"pro",  cat:"analisis",     icon:"⟁", name:"Royalty Calculator",    desc:"Regalías reales en todas las plataformas.",                  url:"#" },
+  { id:6,  tier:"pro",  cat:"analisis",     icon:"⟁", name:"Royalty Calculator",    desc:"Regalías reales en todas las plataformas.",                  url:"royalty-calculator.html" },
   { id:7,  tier:"pro",  cat:"distribucion", icon:"⬡", name:"Playlist Pitch Engine", desc:"Pitches para editores de Spotify y Apple Music.",            url:"playlist-pitch.html" },
   { id:8,  tier:"free", cat:"marketing",    icon:"⟐", name:"Semana Explosiva",       desc:"Plan de contenido semanal para cada lanzamiento.",           url:"semana-explosiva.html" },
   { id:9,  tier:"pro",  cat:"analisis",     icon:"◉", name:"Market Intelligence",   desc:"Data que el 90% de la industria no conoce.",                url:"#" },
@@ -502,7 +502,7 @@ function activatePlan() {
   isPro = true;
   document.getElementById("proBadge").classList.add("visible");
   document.getElementById("upgradeTopBtn").style.display = "none";
-  document.getElementById("userPlan").textContent = "ARTIST VAULT PRO · ACTIVO";
+  document.getElementById("userPlan").textContent = "MUSICCODEXBOX PRO · ACTIVO";
   document.getElementById("userPlan").style.color = "var(--gold)";
   renderTools();
 }

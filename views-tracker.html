@@ -76,7 +76,6 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; m
 
 /* PLATFORM PILLS */
 .plat-row { display:flex; gap:6px; overflow-x:auto; padding:4px 16px 10px; scrollbar-width:none; position:relative; z-index:1; }
-.plat-row::-webkit-scrollbar { display:none; }
 .ppill {
   flex-shrink:0; padding:7px 16px; border-radius:100px;
   font-size:12px; font-weight:700; border:1px solid var(--border);
@@ -87,7 +86,6 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; m
 .ppill.toggled { opacity:1; }
 .ppill.toggled-off { opacity:0.32; filter:grayscale(0.6); }
 .toggle-row { display:flex; gap:5px; overflow-x:auto; padding:0 16px 8px; scrollbar-width:none; }
-.toggle-row::-webkit-scrollbar { display:none; }
 .tpill {
   display:flex; align-items:center; gap:5px; padding:4px 10px;
   border-radius:100px; font-size:11px; font-weight:700; cursor:pointer;
@@ -129,7 +127,6 @@ canvas#chart {
 .chart-dot { position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 8px currentColor, 0 0 16px currentColor; z-index:10; }
 /* SUPPORT LINES TOGGLE */
 .support-row { display:flex; align-items:center; gap:5px; overflow-x:auto; padding:6px 16px 4px; scrollbar-width:none; position:relative; z-index:1; }
-.support-row::-webkit-scrollbar { display:none; }
 .sline-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; flex-shrink:0; }
 .slpill {
   display:flex; align-items:center; gap:4px; padding:4px 9px;
@@ -515,7 +512,6 @@ canvas#chart {
 <div class="btab-content active" id="btab-import">
   <div id="datos-panel"></div>
 
-
   <!-- ADD MANUAL (colapsable) -->
   <div class="add-card-mini">
     <button class="add-toggle" onclick="toggleAddForm(this)">✏️ Añadir manualmente</button>
@@ -591,17 +587,17 @@ resizeBg(); window.addEventListener("resize", resizeBg);
 // ── PLATFORMS ─────────────────────────────────────────────
 const PLATFORMS = [
   { id:"all",           label:"Todo",          emoji:"🌐", color:"#aaa",    rate:0 },
-  { id:"spotify",       label:"Spotify",       emoji:"🎵", color:"#1db954", rate:0.000666 },
-  { id:"amazon",        label:"Amazon Music",  emoji:"📦", color:"#ff9900", rate:0.010574 },
-  { id:"amazon_prime",  label:"Amazon Prime",  emoji:"🔵", color:"#00a8e0", rate:0.001343 },
-  { id:"apple",         label:"Apple Music",   emoji:"🍎", color:"#fc3c44", rate:0.005738 },
-  { id:"youtube",       label:"YouTube",       emoji:"▶️",  color:"#ff0000", rate:0.007440 },
+  { id:"spotify",       label:"Spotify",       emoji:"🎵", color:"#1db954", rate:0.004 },
+  { id:"amazon",        label:"Amazon Music",  emoji:"📦", color:"#ff9900", rate:0.0107 },
+  { id:"amazon_prime",  label:"Amazon Prime",  emoji:"🔵", color:"#00a8e0", rate:0.0013 },
+  { id:"apple",         label:"Apple Music",   emoji:"🍎", color:"#fc3c44", rate:0.008 },
+  { id:"youtube",       label:"YouTube",       emoji:"▶️",  color:"#ff0000", rate:0.002 },
   { id:"manual",        label:"Manual",        emoji:"✏️",  color:"#aaa",    rate:0 },
 ];
 
 const METRICS = [
-  { id:"streams",      label:"Reproducciones", color:"#f5c518", emoji:"🎧" },
-  { id:"listeners",    label:"Oyentes/día",    color:"#00e676", emoji:"👥" },
+  { id:"streams",      label:"Reproducciones", color:"#FFB830", emoji:"🎧" },
+  { id:"listeners",    label:"Oyentes/día",    color:"#00F5A0", emoji:"👥" },
   { id:"monthly",      label:"Oyentes mes",    color:"#4fc3f7", emoji:"📅" },
   { id:"followers",    label:"Seguidores",     color:"#e91e63", emoji:"❤️" },
   { id:"saves",        label:"Saves",          color:"#b06afc", emoji:"💾" },
@@ -623,8 +619,8 @@ let songsSortBy   = "streams";
 
 // ── SUPPORT LINES ─────────────────────────────────────────
 const SUPPORT_DEFS = [
-  { key:"avg",   label:"AVG",    color:"#f5c518", dash:true  },
-  { key:"max",   label:"MAX",    color:"#00e676", dash:true  },
+  { key:"avg",   label:"AVG",    color:"#FFB830", dash:true  },
+  { key:"max",   label:"MAX",    color:"#00F5A0", dash:true  },
   { key:"min",   label:"MIN",    color:"#ff4d4d", dash:true  },
   { key:"trend", label:"TREND",  color:"#b06afc", dash:false },
 ];
@@ -664,7 +660,6 @@ function buildPills() {
   const tRow = document.getElementById("toggle-row");
 
   // Platforms that have data loaded
-
   PLATFORMS.forEach(p => {
     if (p.id==="manual") return; // Manual: in Datos tab, not a pill
     const pill = document.createElement("div");
@@ -1056,7 +1051,7 @@ function drawChart(data) {
 
   // ── CROSSOVER FILL Y LÍNEA DE PRECIO ─────────────────────
   if (smaFast) {
-    const COL_UP="#00e676"; const COL_DN="#ff4d4d";
+    const COL_UP="#00F5A0"; const COL_DN="#ff4d4d";
     const validStart=smaFast.findIndex(v=>v!==null);
 
     // Relleno entre precio y SMA (verde/rojo)
@@ -1178,7 +1173,7 @@ function drawChart(data) {
       ctx.fillText(smaSlowLabel,lx+17*dpr,ly); lx+=52*dpr;
     }
     // Leyenda cruce
-    ctx.fillStyle="#00e676"; ctx.fillRect(lx,ly-5*dpr,6*dpr,6*dpr);
+    ctx.fillStyle="#00F5A0"; ctx.fillRect(lx,ly-5*dpr,6*dpr,6*dpr);
     ctx.fillText("↑",lx+8*dpr,ly);
     ctx.fillStyle="#ff4d4d"; ctx.fillRect(lx+16*dpr,ly-5*dpr,6*dpr,6*dpr);
     ctx.fillText("↓",lx+24*dpr,ly);
@@ -1293,8 +1288,8 @@ function drawChart(data) {
       ctx.restore();
     }
 
-    if (supportLines.avg)   drawHline(avgV, "#f5c518", true,  "AVG", avgV);
-    if (supportLines.max)   drawHline(maxV2,"#00e676", true,  "MAX", maxV2);
+    if (supportLines.avg)   drawHline(avgV, "#FFB830", true,  "AVG", avgV);
+    if (supportLines.max)   drawHline(maxV2,"#00F5A0", true,  "MAX", maxV2);
     if (supportLines.min)   drawHline(minV2,"#ff4d4d", true,  "MIN", minV2);
     if (supportLines.trend) {
       const ty0 = intercept;
@@ -1792,8 +1787,6 @@ function importAmazonCSV(input) {
   reader.readAsText(file,"UTF-8");
 }
 
-
-
 // ── PROYECCIÓN DE PAGOS ───────────────────────────────────
 function renderPagos() {
   const box = document.getElementById("pagos-content");
@@ -1897,7 +1890,6 @@ function renderPagos() {
   `;
 }
 
-
 // ── IMPORT CSV: YOUTUBE ───────────────────────────────────
 function importYouTubeCSV(input) {
   const file=input.files[0]; if (!file) return;
@@ -1969,8 +1961,6 @@ function importYouTubeCSV(input) {
   };
   reader.readAsText(file,"UTF-8");
 }
-
-
 
 // ── IMPORT CSV: AMAZON PRIME ─────────────────────────────
 function importAmazonPrimeCSV(input) {
@@ -2056,7 +2046,6 @@ function importDistroKidFormat(input, platId, statusId, successMsg) {
   };
   reader.readAsText(file,"UTF-8");
 }
-
 
 // ── IMPORT PAGOS REALES (DISTROKID FORMAT) ────────────────
 function importPaymentCSV(input, platId) {
@@ -2159,7 +2148,6 @@ function clearOnePlatformPayments(platId) {
   if(document.getElementById("btab-import")?.classList.contains("active")) renderDatosPanel();
   showToast("🗑️ Pagos de "+platId+" eliminados");
 }
-
 
 // ── DATOS PANEL — context-aware per platform ─────────────
 function renderDatosPanel() {

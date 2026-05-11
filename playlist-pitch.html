@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Playlist Pitch Engine · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="genre-db.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;
+      --bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);
+      --muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;
+    }
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+
+    /* HEADER */
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--purple);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+
+    /* MAIN */
+    #main{padding:16px 18px 100px;}
+
+    /* CARDS */
+    .card{background:var(--s);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+    .card.pro-card{background:linear-gradient(145deg,#0E0E1C,#141428);border:1px solid rgba(124,58,255,.25);box-shadow:0 0 24px rgba(124,58,255,.06);}
+
+    /* SECTION LABEL */
+    .sec-lbl{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+    .sec-lbl::before{content:'';width:14px;height:1px;}
+    .sec-lbl.purple{color:var(--purple);}
+    .sec-lbl.purple::before{background:var(--purple);}
+    .sec-lbl.mint{color:var(--mint);}
+    .sec-lbl.mint::before{background:var(--mint);}
+    .sec-lbl.gold{color:var(--gold);}
+    .sec-lbl.gold::before{background:var(--gold);}
+    .sec-lbl.pink{color:var(--pink);}
+    .sec-lbl.pink::before{background:var(--pink);}
+
+    /* INPUTS */
+    .lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:block;}
+    .inp{width:100%;padding:10px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:10px;transition:border-color .2s;}
+    .inp:focus{border-color:rgba(124,58,255,.4);}
+    select.inp option{background:var(--s2);}
+    textarea.inp{min-height:70px;resize:none;line-height:1.6;}
+    .row{display:flex;gap:8px;}
+    .row>div{flex:1;min-width:0;}
+
+    /* MOOD PILLS */
+    #moodWrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .mood-pill{padding:5px 10px;border-radius:20px;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+    .mood-pill.sel{background:rgba(124,58,255,.15);border-color:rgba(124,58,255,.4);color:var(--purple);}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border:none;border-radius:12px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;width:100%;}
+    .btn:active{transform:scale(.96);}
+    .btn-purple{background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .btn-mint{background:var(--mint);color:#000;}
+    .btn-gold{background:rgba(255,184,48,.12);border:1px solid rgba(255,184,48,.3);color:var(--gold);}
+
+    /* PITCH RESULT */
+    .pitch-block{margin-bottom:12px;}
+    .pitch-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .pitch-platform{display:flex;align-items:center;gap:8px;}
+    .plt-icon{font-size:16px;}
+    .plt-name{font-size:13px;font-weight:700;color:#fff;}
+    .plt-chars{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+    .copy-btn{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;padding:5px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--border);color:var(--mint);cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+    .copy-btn:active{transform:scale(.95);}
+    .copy-btn.copied{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.3);}
+    .pitch-text{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text);line-height:1.7;font-family:'Space Mono',monospace;white-space:pre-wrap;}
+    .char-bar{height:2px;border-radius:1px;margin-top:6px;transition:width .3s;}
+    .char-bar.ok{background:var(--mint);}
+    .char-bar.warn{background:var(--gold);}
+    .char-bar.over{background:var(--pink);}
+
+    /* PLAYLIST TARGETS */
+    .playlist-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;}
+    .pl-left{display:flex;flex-direction:column;gap:3px;}
+    .pl-name{font-size:12px;font-weight:700;color:#fff;}
+    .pl-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+    .pl-followers{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--mint);}
+
+    /* STEPS */
+    .step-item{display:flex;gap:12px;margin-bottom:14px;}
+    .step-num{width:24px;height:24px;border-radius:50%;background:rgba(124,58,255,.15);border:1px solid rgba(124,58,255,.3);color:var(--purple);font-family:'Space Mono',monospace;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+    .step-body{flex:1;}
+    .step-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;}
+    .step-desc{font-size:11px;color:var(--muted);line-height:1.6;}
+
+    /* DIVIDER */
+    .divrow{display:flex;align-items:center;gap:10px;margin:4px 0 14px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+
+    /* EMPTY STATE */
+    #pitchResults{display:none;}
+    #emptyState{text-align:center;padding:32px 0;}
+    .empty-icon{font-size:36px;opacity:.3;margin-bottom:12px;}
+    .empty-txt{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;}
+
+    /* SAVED */
+    .saved-item{padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;}
+    .saved-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;}
+    .saved-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+
+    /* TABS */
+    #tabs{display:flex;gap:6px;padding:12px 18px 0;overflow-x:auto;scrollbar-width:none;}
+    #tabs::-webkit-scrollbar{display:none;}
+    .tab{flex-shrink:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;}
+    .tab.active{background:rgba(124,58,255,.1);border-color:rgba(124,58,255,.3);color:var(--purple);}
+
+    /* CHAR COUNTER */
+    .char-count{font-family:'Space Mono',monospace;font-size:8px;text-align:right;margin-top:-8px;margin-bottom:10px;}
+  </style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">⬡ DISTRIBUCIÓN · PRO</div>
+      <div class="hdr-title">Playlist Pitch Engine</div>
+    </div>
+    <div id="hdrBadge" style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);"></div>
+  </div>
+</div>
+
+<div id="tabs">
+  <div class="tab active" data-tab="generate" onclick="switchTab('generate')">GENERAR</div>
+  <div class="tab" data-tab="guide" onclick="switchTab('guide')">GUÍA</div>
+  <div class="tab" data-tab="saved" onclick="switchTab('saved')">GUARDADOS</div>
+</div>
+
+<div id="main">
+
+  <!-- ── GENERATE TAB ── -->
+  <div id="tab-generate">
+
+    <!-- SONG INFO -->
+    <div class="card">
+      <div class="sec-lbl purple">Datos del tema</div>
+      <div class="row">
+        <div>
+          <label class="lbl">Título del tema</label>
+          <input class="inp" id="songTitle" type="text" placeholder="No Te Pienso"/>
+        </div>
+        <div>
+          <label class="lbl">Tu nombre artístico</label>
+          <input class="inp" id="artistName" type="text" placeholder="Jeff Mkeyz"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="lbl">Género</label>
+          <select class="inp" id="genreSelect">
+            <option value="">Selecciona...</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">BPM (aproximado)</label>
+          <input class="inp" id="bpmInput" type="number" placeholder="85"/>
+        </div>
+      </div>
+      <label class="lbl">Artistas similares / referencias (max 3)</label>
+      <input class="inp" id="refs" type="text" placeholder="Romeo Santos, Rauw Alejandro"/>
+      <label class="lbl">Fecha de lanzamiento</label>
+      <input class="inp" id="releaseDate" type="date"/>
+    </div>
+
+    <!-- MOOD SELECTOR -->
+    <div class="card">
+      <div class="sec-lbl purple">Mood y vibe del tema</div>
+      <div id="moodWrap"></div>
+      <label class="lbl">¿De qué va la canción? (1-2 frases)</label>
+      <textarea class="inp" id="songDesc" placeholder="Una bachata sobre el momento en que dejas de pensar en alguien y sigues adelante con la cabeza alta..."></textarea>
+    </div>
+
+    <!-- PITCH TARGETS -->
+    <div class="card">
+      <div class="sec-lbl purple">¿Dónde quieres enviarlo?</div>
+      <div id="targetWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;"></div>
+    </div>
+
+    <!-- LANGUAGE -->
+    <div class="card">
+      <div class="sec-lbl purple">Idioma del pitch</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-purple" id="lang-es" onclick="setLang('es')" style="flex:1;">🇪🇸 ESPAÑOL</button>
+        <button class="btn btn-ghost" id="lang-en" onclick="setLang('en')" style="flex:1;">🇺🇸 ENGLISH</button>
+      </div>
+    </div>
+
+    <!-- GENERATE BTN -->
+    <button class="btn btn-purple" onclick="generatePitches()" style="margin-bottom:16px;">
+      ⚡ GENERAR PITCHES
+    </button>
+
+    <!-- EMPTY STATE -->
+    <div id="emptyState">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-txt">Rellena los datos del tema<br/>y genera tu pitch personalizado.</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="pitchResults">
+      <div class="divrow"><div class="divline"></div><div class="divtxt">PITCHES GENERADOS</div><div class="divline"></div></div>
+      <div id="pitchContainer"></div>
+
+      <div class="divrow" style="margin-top:16px;"><div class="divline"></div><div class="divtxt">PLAYLISTS OBJETIVO</div><div class="divline"></div></div>
+      <div id="playlistContainer"></div>
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-gold" onclick="savePitch()" style="flex:1;">GUARDAR PITCH</button>
+        <button class="btn btn-ghost" onclick="resetForm()" style="flex:1;">NUEVO</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-generate -->
+
+  <!-- ── GUIDE TAB ── -->
+  <div id="tab-guide" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl mint">Cómo funciona Spotify Editorial</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Abre Spotify for Artists</div>
+          <div class="step-desc">Ve a music.spotify.com → selecciona tu canción → "Pitch a Spotify playlist". Solo disponible ANTES del lanzamiento.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Ventana de pitch: 7 días antes</div>
+          <div class="step-desc">El pitch debe enviarse mínimo 7 días antes del lanzamiento. Si la canción ya está publicada, ya no puedes hacer pitch editorial.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Solo UN pitch por release</div>
+          <div class="step-desc">Spotify solo te permite hacer pitch a UNA canción por ciclo de lanzamiento. Elige el track con más potencial.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">El formulario pide exactamente esto</div>
+          <div class="step-desc">Género, sub-género, estado de ánimo, idioma, ciudad de origen, descripción del tema en 500 caracteres. Usa los pitches que genera esta herramienta.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Resultado en 7 días</div>
+          <div class="step-desc">Si Spotify acepta, entra en una playlist el viernes de lanzamiento. Si no, la canción sigue distribuida igual — el pitch no afecta la distribución.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl mint">SubmitHub — curators independientes</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Crea cuenta gratuita en SubmitHub</div>
+          <div class="step-desc">submithub.com — tienes 1 submission gratis por día con cuenta free. Los créditos de pago ($3/10 credits) aceleran el proceso.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Filtra curators por género</div>
+          <div class="step-desc">Busca tu género específico. Lee los requisitos de cada curator — algunos solo aceptan inglés, otros solo ciertos subgéneros.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Usa el pitch corto (250 chars)</div>
+          <div class="step-desc">Los curators reciben cientos de pitches. Los primeros 2 segundos deciden si leen o no. Directo, personal, sin hype vacío.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl mint">Apple Music Editorial</div>
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">A través de tu distribuidor</div>
+          <div class="step-desc">DistroKid, TuneCore, CD Baby tienen acceso directo a Apple Music Editorial. El pitch va en el formulario de distribución antes de subir la canción.</div>
+        </div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Apple valora mucho la narrativa</div>
+          <div class="step-desc">A diferencia de Spotify, Apple quiere saber la historia detrás del tema. El pitch largo (400-500 chars) funciona mejor aquí.</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-guide -->
+
+  <!-- ── SAVED TAB ── -->
+  <div id="tab-saved" style="display:none;">
+    <div id="savedList"></div>
+    <div id="savedEmpty" style="text-align:center;padding:40px 0;display:none;">
+      <div class="empty-icon">💾</div>
+      <div class="empty-txt">No hay pitches guardados aún.<br/>Genera uno y guárdalo.</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+(function(){
+  const tg = window.Telegram?.WebApp;
+  if(tg){ tg.ready(); tg.expand(); }
+  const toast = m => tg ? tg.showAlert(m) : alert(m);
+
+  const SAVE_KEY = 'av_pitches_v1';
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(SAVE_KEY)) || []; } catch(e){ saved=[]; }
+  const persist = () => localStorage.setItem(SAVE_KEY, JSON.stringify(saved));
+
+  let activeLang = 'es';
+  let selectedMoods = new Set();
+  let selectedTargets = new Set(['spotify','submithub','apple']);
+
+  // ── MOODS ──
+  const MOODS_ES = ['romántico','melancólico','sensual','energético','oscuro','festivo',
+    'íntimo','confiado','nostálgico','agresivo','relajado','épico','dreamy','urbano'];
+  const MOODS_EN = ['romantic','melancholic','sensual','energetic','dark','festive',
+    'intimate','confident','nostalgic','aggressive','chill','epic','dreamy','urban'];
+
+  const TARGETS = [
+    { id:'spotify',   label:'Spotify Editorial', icon:'🎵', limit:500 },
+    { id:'submithub', label:'SubmitHub',          icon:'📬', limit:250 },
+    { id:'apple',     label:'Apple Music',        icon:'🍎', limit:500 },
+    { id:'curator',   label:'Email curator',      icon:'📧', limit:800 },
+  ];
+
+  // ── INIT ──
+  function init(){
+    // Populate genre select
+    const sel = document.getElementById('genreSelect');
+    if(typeof GenreDB !== 'undefined'){
+      GenreDB.forSelect().forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.slug;
+        opt.textContent = g.name + ' · ' + g.bpm[0] + '-' + g.bpm[1] + ' BPM';
+        sel.appendChild(opt);
+      });
+    } else {
+      ['trap_latino','reggaeton','dembow','afrobeat','bachata','r&b','pop_urbano','drill','house','lofi'].forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g; opt.textContent = g; sel.appendChild(opt);
+      });
+    }
+
+    // Release date default (next friday)
+    const d = new Date();
+    d.setDate(d.getDate() + ((5-d.getDay()+7)%7||7));
+    document.getElementById('releaseDate').value = d.toISOString().split('T')[0];
+
+    buildMoods(); buildTargets(); renderSaved();
+  }
+
+  function buildMoods(){
+    const moods = activeLang === 'es' ? MOODS_ES : MOODS_EN;
+    const wrap = document.getElementById('moodWrap');
+    wrap.innerHTML = moods.map(m => `
+      <div class="mood-pill ${selectedMoods.has(m)?'sel':''}" onclick="toggleMood('${m}')">${m}</div>
+    `).join('');
+  }
+
+  function buildTargets(){
+    const wrap = document.getElementById('targetWrap');
+    wrap.innerHTML = TARGETS.map(t => `
+      <div class="mood-pill ${selectedTargets.has(t.id)?'sel':''}" onclick="toggleTarget('${t.id}')">${t.icon} ${t.label}</div>
+    `).join('');
+  }
+
+  window.toggleMood = m => {
+    if(selectedMoods.has(m)) selectedMoods.delete(m);
+    else if(selectedMoods.size < 5) selectedMoods.add(m);
+    buildMoods();
+  };
+  window.toggleTarget = id => {
+    if(selectedTargets.has(id)) selectedTargets.delete(id);
+    else selectedTargets.add(id);
+    buildTargets();
+  };
+  window.setLang = lang => {
+    activeLang = lang;
+    document.getElementById('lang-es').className = 'btn ' + (lang==='es'?'btn-purple':'btn-ghost');
+    document.getElementById('lang-en').className = 'btn ' + (lang==='en'?'btn-purple':'btn-ghost');
+    selectedMoods.clear();
+    buildMoods();
+  };
+
+  // ── PITCH TEMPLATES ──
+  function buildPitch(type, data){
+    const { title, artist, genre, bpm, refs, desc, moods, releaseDate } = data;
+    const moodStr = moods.join(', ');
+    const refsStr = refs || 'artistas similares del género';
+    const dateStr = releaseDate ? new Date(releaseDate+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : 'próximamente';
+    const dateStrEn = releaseDate ? new Date(releaseDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'upcoming';
+
+    const genreObj = typeof GenreDB !== 'undefined' ? GenreDB.get(genre) : null;
+    const genreName = genreObj ? genreObj.name : genre;
+    const seoTags = genreObj ? genreObj.seo.slice(0,3).join(', ') : genre;
+
+    if(activeLang === 'es'){
+      switch(type){
+        case 'spotify': return `"${title}" es un tema de ${genreName} con una energía ${moodStr}. ${desc ? desc.trim() + ' ' : ''}Con referencias sonoras de ${refsStr}, el track combina producción contemporánea con autenticidad del género. Lanzamiento: ${dateStr}. BPM: ${bpm||'—'}.`;
+
+        case 'submithub': return `"${title}" — ${genreName} ${moodStr}. ${desc ? desc.trim() : `Un tema de ${artist} con influencias de ${refsStr}.`} Lanzamiento ${dateStr}.`;
+
+        case 'apple': return `"${title}" de ${artist} es un trabajo de ${genreName} que captura la esencia de lo ${moodStr}. ${desc ? desc.trim() + ' ' : ''}La producción toma referencias de ${refsStr} y las lleva a un sonido propio. Una canción para escuchar a las ${title.toLowerCase().includes('media')||title.toLowerCase().includes('noche')?'2AM':title.toLowerCase().includes('mañana')?'mediodía':'cualquier hora'}. Lanzamiento: ${dateStr}.`;
+
+        case 'curator': return `Hola,\n\nSoy ${artist}, productor y artista independiente. Te escribo para presentarte "${title}", mi nuevo single de ${genreName} que sale el ${dateStr}.\n\n${desc || `El tema tiene una energía ${moodStr} con referencias de ${refsStr}.`}\n\nCreo que encaja con la línea editorial de tu playlist porque ${moodStr.split(',')[0]} es el hilo conductor de lo que cuidas en tu curaduría.\n\nLink de escucha: [AÑADIR LINK]\n\nGracias por tu tiempo,\n${artist}`;
+      }
+    } else {
+      switch(type){
+        case 'spotify': return `"${title}" is a ${genreName} track with a ${moodStr} energy. ${desc ? desc.trim() + ' ' : ''}Drawing from ${refsStr}, the track blends contemporary production with genuine genre authenticity. Release date: ${dateStrEn}. BPM: ${bpm||'—'}. Keywords: ${seoTags}.`;
+
+        case 'submithub': return `"${title}" — ${genreName} with ${moodStr} vibes. ${desc ? desc.trim() : `A track by ${artist} influenced by ${refsStr}.`} Out ${dateStrEn}.`;
+
+        case 'apple': return `"${title}" by ${artist} is a ${genreName} record that captures a ${moodStr} feeling. ${desc ? desc.trim() + ' ' : ''}The production draws from ${refsStr} while carving its own sound. This is a song for late nights and honest moments. Release: ${dateStrEn}.`;
+
+        case 'curator': return `Hi,\n\nI'm ${artist}, an independent producer and artist. I'm reaching out about "${title}", my new ${genreName} single dropping ${dateStrEn}.\n\n${desc || `The track has a ${moodStr} energy with references from ${refsStr}.`}\n\nI believe it fits your playlist because the ${moodStr.split(',')[0]} feel matches what your audience connects with.\n\nListening link: [ADD LINK]\n\nThank you for your time,\n${artist}`;
+      }
+    }
+    return '';
+  }
+
+  // ── PLAYLISTS BY GENRE ──
+  const PLAYLISTS = {
+    bachata: [
+      { name:'Bachata Lovers',      curator:'Spotify Editorial', followers:'2.1M', tip:'Principal playlist de bachata. Pitch obligatorio.' },
+      { name:'Bachata Clasica',     curator:'Spotify Editorial', followers:'890K', tip:'Para temas con guitarra tradicional.' },
+      { name:'Bachata Moderna',     curator:'Spotify Editorial', followers:'1.4M', tip:'Para bachata con producción urbana.' },
+      { name:'Latin Romantic Hits', curator:'Spotify Editorial', followers:'3.2M', tip:'Crossover bachata/pop latino.' },
+    ],
+    r_and_b: [
+      { name:'RnB United',          curator:'Spotify Editorial', followers:'4.1M', tip:'Principal playlist R&B. Alta competencia.' },
+      { name:'Late Night R&B',      curator:'Spotify Editorial', followers:'2.8M', tip:'Para temas slow y sensuales. Perfecto para Una y Media.' },
+      { name:'R&B Vibes',           curator:'Spotify Editorial', followers:'1.9M', tip:'R&B contemporáneo.' },
+      { name:'slow jams',           curator:'Spotify Editorial', followers:'3.5M', tip:'Slow jams clásicos y modernos.' },
+    ],
+    trap_latino: [
+      { name:'Trap Latino',         curator:'Spotify Editorial', followers:'5.2M', tip:'La más importante del género.' },
+      { name:'Flow Calle',          curator:'Spotify Editorial', followers:'2.1M', tip:'Trap con calle auténtica.' },
+      { name:'Rap Caviar (ES)',     curator:'Spotify Editorial', followers:'14M',  tip:'Difícil acceso pero muy valorada.' },
+    ],
+    reggaeton: [
+      { name:'Reggaeton Classics',  curator:'Spotify Editorial', followers:'8.1M', tip:'Clásicos y nuevos del género.' },
+      { name:'Baila Reggaeton',     curator:'Spotify Editorial', followers:'6.4M', tip:'Para temas bailables.' },
+      { name:'Fuego',               curator:'Spotify Editorial', followers:'4.2M', tip:'Crossover urbano latino.' },
+    ],
+    dembow: [
+      { name:'Dembow',              curator:'Spotify Editorial', followers:'1.2M', tip:'La principal del género en Spotify.' },
+      { name:'Música Dominicana',   curator:'Spotify Editorial', followers:'890K', tip:'Para temas con identidad RD.' },
+      { name:'Flow Latino',         curator:'Spotify Editorial', followers:'2.4M', tip:'Crossover dembow/reggaeton.' },
+    ],
+    afrobeat: [
+      { name:'Afro Heat',           curator:'Spotify Editorial', followers:'3.8M', tip:'Principal playlist afrobeats.' },
+      { name:'Naija Hits',          curator:'Spotify Editorial', followers:'2.1M', tip:'Para artistas con conexión Nigeria.' },
+      { name:'African Heat',        curator:'Spotify Editorial', followers:'4.5M', tip:'Afrobeats & afropop.' },
+    ],
+    default: [
+      { name:'New Music Friday',    curator:'Spotify Editorial', followers:'6.2M', tip:'Se actualiza cada viernes. Alta competencia.' },
+      { name:'Fresh Finds',         curator:'Spotify Editorial', followers:'1.8M', tip:'Para artistas emergentes. Algoritmo + editorial.' },
+      { name:'Radar Latino',        curator:'Spotify Editorial', followers:'890K', tip:'Para artistas latinos emergentes.' },
+    ],
+  };
+
+  function getPlaylists(genre){
+    return PLAYLISTS[genre] || PLAYLISTS[genre?.replace('&','_and_')] || PLAYLISTS.default;
+  }
+
+  // ── GENERATE ──
+  window.generatePitches = () => {
+    const title  = document.getElementById('songTitle').value.trim();
+    const artist = document.getElementById('artistName').value.trim();
+    const genre  = document.getElementById('genreSelect').value;
+    const bpm    = document.getElementById('bpmInput').value;
+    const refs   = document.getElementById('refs').value.trim();
+    const desc   = document.getElementById('songDesc').value.trim();
+    const releaseDate = document.getElementById('releaseDate').value;
+
+    if(!title){ toast('Añade el título del tema.'); return; }
+    if(!artist){ toast('Añade tu nombre artístico.'); return; }
+    if(!genre){ toast('Selecciona el género.'); return; }
+    if(selectedMoods.size === 0){ toast('Selecciona al menos un mood.'); return; }
+    if(selectedTargets.size === 0){ toast('Selecciona al menos un destino.'); return; }
+
+    const data = { title, artist, genre, bpm, refs, desc, moods:[...selectedMoods], releaseDate };
+
+    // Build pitch blocks
+    const container = document.getElementById('pitchContainer');
+    const platforms = TARGETS.filter(t => selectedTargets.has(t.id));
+
+    container.innerHTML = platforms.map(plt => {
+      const text = buildPitch(plt.id, data);
+      const len  = text.length;
+      const pct  = Math.min(len/plt.limit*100, 100);
+      const barCls = pct < 80 ? 'ok' : pct < 100 ? 'warn' : 'over';
+      return `<div class="pitch-block">
+        <div class="pitch-header">
+          <div class="pitch-platform">
+            <span class="plt-icon">${plt.icon}</span>
+            <span class="plt-name">${plt.label}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="plt-chars">${len}/${plt.limit}</span>
+            <button class="copy-btn" id="copy-${plt.id}" onclick="copyPitch('${plt.id}',\`${text.replace(/`/g,"'")}\`)">COPIAR</button>
+          </div>
+        </div>
+        <div class="pitch-text" id="pt-${plt.id}">${text}</div>
+        <div class="char-bar ${barCls}" style="width:${pct}%"></div>
+      </div>`;
+    }).join('');
+
+    // Playlists
+    const playlists = getPlaylists(genre);
+    document.getElementById('playlistContainer').innerHTML = playlists.map(pl => `
+      <div class="playlist-item">
+        <div class="pl-left">
+          <div class="pl-name">${pl.name}</div>
+          <div class="pl-meta">${pl.curator} · ${pl.tip}</div>
+        </div>
+        <div class="pl-followers">${pl.followers}</div>
+      </div>`).join('');
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('pitchResults').style.display = 'block';
+    document.getElementById('hdrBadge').textContent = platforms.length + ' pitches';
+
+    // Store current for saving
+    window._currentPitchData = { data, pitches: Object.fromEntries(platforms.map(p => [p.id, buildPitch(p.id, data)])) };
+  };
+
+  window.copyPitch = (id, text) => {
+    navigator.clipboard?.writeText(text).then(() => {
+      const btn = document.getElementById('copy-'+id);
+      if(btn){ btn.textContent='✓ COPIADO'; btn.classList.add('copied'); setTimeout(()=>{ btn.textContent='COPIAR'; btn.classList.remove('copied'); },2000); }
+    }).catch(() => toast(text));
+  };
+
+  window.savePitch = () => {
+    if(!window._currentPitchData){ toast('Genera un pitch primero.'); return; }
+    const { data } = window._currentPitchData;
+    saved.unshift({ id: Date.now(), title: data.title, artist: data.artist, genre: data.genre, date: new Date().toLocaleDateString('es-ES'), data: window._currentPitchData });
+    if(saved.length > 20) saved.pop();
+    persist();
+    toast(`✅ Pitch de "${data.title}" guardado.`);
+    renderSaved();
+  };
+
+  function renderSaved(){
+    const list = document.getElementById('savedList');
+    const empty = document.getElementById('savedEmpty');
+    if(!saved.length){ list.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    list.innerHTML = saved.map((s,i) => `
+      <div class="saved-item" onclick="loadSaved(${i})">
+        <div class="saved-title">${s.title} · ${s.artist}</div>
+        <div class="saved-meta">${s.genre} · Guardado el ${s.date}</div>
+      </div>`).join('');
+  }
+
+  window.loadSaved = i => {
+    const s = saved[i];
+    if(!s) return;
+    const d = s.data.data;
+    document.getElementById('songTitle').value   = d.title || '';
+    document.getElementById('artistName').value  = d.artist || '';
+    document.getElementById('genreSelect').value = d.genre || '';
+    document.getElementById('bpmInput').value    = d.bpm || '';
+    document.getElementById('refs').value        = d.refs || '';
+    document.getElementById('songDesc').value    = d.desc || '';
+    selectedMoods = new Set(d.moods || []);
+    buildMoods();
+    switchTab('generate');
+    generatePitches();
+  };
+
+  window.resetForm = () => {
+    ['songTitle','artistName','bpmInput','refs','songDesc'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('genreSelect').value = '';
+    selectedMoods.clear();
+    buildMoods();
+    document.getElementById('pitchResults').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('hdrBadge').textContent = '';
+    window._currentPitchData = null;
+  };
+
+  window.switchTab = tab => {
+    ['generate','guide','saved'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
+      document.querySelector(`.tab[data-tab="${t}"]`)?.classList.toggle('active', t===tab);
+    });
+    if(tab==='saved') renderSaved();
+  };
+
+  window.goBack = () => { if(tg) tg.close(); else history.back(); };
+
+  init();
+})();
+</script>
+</body>
+</html>

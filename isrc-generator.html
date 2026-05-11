@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>ISRC Generator · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;--bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);--muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;}
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--gold);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+    #main{padding:16px 18px 80px;}
+    .card{background:var(--s);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+    .card.gold-card{border-color:rgba(255,184,48,.2);background:rgba(255,184,48,.03);}
+    .card.mint-card{border-color:rgba(0,245,160,.2);background:rgba(0,245,160,.03);}
+    .sec-lbl{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+    .sec-lbl.gold{color:var(--gold);}
+    .sec-lbl.gold::before{content:'';width:14px;height:1px;background:var(--gold);}
+    .sec-lbl.mint{color:var(--mint);}
+    .sec-lbl.mint::before{content:'';width:14px;height:1px;background:var(--mint);}
+    .sec-lbl.pink{color:var(--pink);}
+    .sec-lbl.pink::before{content:'';width:14px;height:1px;background:var(--pink);}
+    .lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:block;}
+    .inp{width:100%;padding:10px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:10px;transition:border-color .2s;text-transform:uppercase;}
+    .inp:focus{border-color:rgba(255,184,48,.4);}
+    select.inp{text-transform:none;}
+    select.inp option{background:var(--s2);}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border:none;border-radius:12px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;width:100%;}
+    .btn:active{transform:scale(.96);}
+    .btn-gold{background:var(--gold);color:#000;}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .btn-mint{background:var(--mint);color:#000;}
+    /* ISRC DISPLAY */
+    .isrc-display{background:var(--s2);border:2px solid var(--gold);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px;}
+    .isrc-code{font-family:'Space Mono',monospace;font-size:24px;font-weight:700;color:var(--gold);letter-spacing:.2em;margin-bottom:8px;}
+    .isrc-parts{display:flex;justify-content:center;gap:4px;flex-wrap:wrap;}
+    .isrc-part{display:flex;flex-direction:column;align-items:center;gap:3px;}
+    .part-val{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;padding:5px 8px;border-radius:6px;}
+    .part-val.country{background:rgba(255,184,48,.15);color:var(--gold);}
+    .part-val.reg{background:rgba(124,58,255,.15);color:var(--purple);}
+    .part-val.year{background:rgba(0,245,160,.15);color:var(--mint);}
+    .part-val.num{background:rgba(255,45,120,.15);color:var(--pink);}
+    .part-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:.1em;}
+    .sep{font-family:'Space Mono',monospace;font-size:18px;color:var(--dim);align-self:center;padding-bottom:16px;}
+    /* ANATOMY */
+    .anatomy-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+    .anatomy-box{min-width:48px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;flex-shrink:0;}
+    .anatomy-info{flex:1;}
+    .anatomy-title{font-size:12px;font-weight:700;color:#fff;margin-bottom:2px;}
+    .anatomy-desc{font-size:11px;color:var(--muted);line-height:1.5;}
+    /* TRACK LIST */
+    .track-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;}
+    .track-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:2px;}
+    .track-isrc{font-family:'Space Mono',monospace;font-size:10px;color:var(--gold);}
+    .del-btn{font-family:'Space Mono',monospace;font-size:9px;padding:4px 8px;border-radius:6px;background:transparent;border:1px solid rgba(255,45,120,.3);color:var(--pink);cursor:pointer;}
+    .copy-btn{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;padding:5px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--border);color:var(--gold);cursor:pointer;}
+    /* VALIDATOR */
+    .valid-ok{color:var(--mint);font-family:'Space Mono',monospace;font-size:10px;}
+    .valid-err{color:var(--pink);font-family:'Space Mono',monospace;font-size:10px;}
+    /* GUIDE */
+    .guide-item{display:flex;gap:10px;margin-bottom:14px;}
+    .guide-num{width:22px;height:22px;border-radius:50%;background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+    .guide-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;}
+    .guide-desc{font-size:11px;color:var(--muted);line-height:1.6;}
+    /* TABS */
+    #navTabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none;}
+    #navTabs::-webkit-scrollbar{display:none;}
+    .ntab{flex-shrink:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;}
+    .ntab.active{background:rgba(255,184,48,.1);border-color:rgba(255,184,48,.3);color:var(--gold);}
+    .divrow{display:flex;align-items:center;gap:10px;margin:4px 0 12px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+    .row{display:flex;gap:8px;}
+    .row>div{flex:1;min-width:0;}
+  </style>
+</head>
+<body>
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">◑ DISTRIBUCIÓN · FREE</div>
+      <div class="hdr-title">ISRC Generator</div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="navTabs">
+    <div class="ntab active" data-t="gen" onclick="switchTab('gen')">GENERAR</div>
+    <div class="ntab" data-t="validate" onclick="switchTab('validate')">VALIDAR</div>
+    <div class="ntab" data-t="library" onclick="switchTab('library')">MIS ISRC</div>
+    <div class="ntab" data-t="guide" onclick="switchTab('guide')">GUÍA</div>
+  </div>
+
+  <!-- GENERATE TAB -->
+  <div id="tab-gen">
+    <div class="card gold-card">
+      <div class="sec-lbl gold">Anatomía del ISRC</div>
+      <div class="anatomy-row">
+        <div class="anatomy-box" style="background:rgba(255,184,48,.1);color:var(--gold);">ES</div>
+        <div class="anatomy-info"><div class="anatomy-title">Código de país (2)</div><div class="anatomy-desc">ISO 3166-1 alpha-2. España = ES, República Dominicana = DO, Colombia = CO, EE.UU. = US.</div></div>
+      </div>
+      <div class="anatomy-row">
+        <div class="anatomy-box" style="background:rgba(124,58,255,.1);color:var(--purple);">ABC</div>
+        <div class="anatomy-info"><div class="anatomy-title">Registrante (3)</div><div class="anatomy-desc">Código de tu sello discográfico o tú como artista independiente. Lo asigna tu PRO o distribuidor.</div></div>
+      </div>
+      <div class="anatomy-row">
+        <div class="anatomy-box" style="background:rgba(0,245,160,.1);color:var(--mint);">25</div>
+        <div class="anatomy-info"><div class="anatomy-title">Año (2)</div><div class="anatomy-desc">Los dos últimos dígitos del año de grabación. 2025 = 25.</div></div>
+      </div>
+      <div class="anatomy-row">
+        <div class="anatomy-box" style="background:rgba(255,45,120,.1);color:var(--pink);">00001</div>
+        <div class="anatomy-info"><div class="anatomy-title">Número de designación (5)</div><div class="anatomy-desc">Número de referencia único que tú asignas. Empieza en 00001 y sube por cada track.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl gold">Genera tu ISRC</div>
+      <div class="row">
+        <div>
+          <label class="lbl">País</label>
+          <select class="inp" id="country" style="text-transform:none;">
+            <option value="ES">🇪🇸 España — ES</option>
+            <option value="DO">🇩🇴 Rep. Dominicana — DO</option>
+            <option value="CO">🇨🇴 Colombia — CO</option>
+            <option value="MX">🇲🇽 México — MX</option>
+            <option value="US">🇺🇸 Estados Unidos — US</option>
+            <option value="GB">🇬🇧 Reino Unido — GB</option>
+            <option value="PR">🇵🇷 Puerto Rico — PR</option>
+            <option value="AR">🇦🇷 Argentina — AR</option>
+            <option value="BR">🇧🇷 Brasil — BR</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Código registrante (3 letras)</label>
+          <input class="inp" id="registrant" maxlength="3" placeholder="MKZ" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="lbl">Año de grabación</label>
+          <input class="inp" id="year" type="number" min="2000" max="2099" placeholder="2025"/>
+        </div>
+        <div>
+          <label class="lbl">Número de designación</label>
+          <input class="inp" id="desig" type="number" min="1" max="99999" placeholder="1"/>
+        </div>
+      </div>
+      <label class="lbl">Nombre del track (para guardar)</label>
+      <input class="inp" id="trackName" placeholder="No Te Pienso" style="text-transform:none;"/>
+      <button class="btn btn-gold" onclick="generateISRC()">◑ GENERAR ISRC</button>
+    </div>
+
+    <div id="genResult" style="display:none;">
+      <div class="isrc-display">
+        <div class="isrc-code" id="isrcCode"></div>
+        <div class="isrc-parts" id="isrcParts"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-mint" onclick="copyISRC()" style="flex:1;">COPIAR ISRC</button>
+        <button class="btn btn-ghost" onclick="saveISRC()" style="flex:1;">GUARDAR</button>
+      </div>
+      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.6;">⚠ Este ISRC es para uso de referencia. Para distribución oficial, regístralo en tu PRO (SGAE, ASCAP, BMI) o usa el que asigna tu distribuidor (DistroKid, TuneCore, etc.)</p>
+    </div>
+  </div>
+
+  <!-- VALIDATE TAB -->
+  <div id="tab-validate" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl gold">Valida un ISRC existente</div>
+      <label class="lbl">Introduce el ISRC a validar</label>
+      <input class="inp" id="validateInput" maxlength="15" placeholder="ES-MKZ-25-00001" oninput="validateISRC(this.value)"/>
+      <div id="validateResult"></div>
+    </div>
+    <div class="card">
+      <div class="sec-lbl gold">Formato correcto</div>
+      <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;letter-spacing:.1em;">
+        XX-XXX-YY-NNNNN<br/>
+        <span style="font-size:9px;color:var(--muted);letter-spacing:.05em;">PAÍS(2) - REGISTRANTE(3) - AÑO(2) - NÚMERO(5)</span>
+      </div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px;">Total: 12 caracteres alfanuméricos. Los guiones son opcionales en algunas plataformas. Spotify los acepta con o sin guiones.</p>
+    </div>
+  </div>
+
+  <!-- LIBRARY TAB -->
+  <div id="tab-library" style="display:none;">
+    <div id="libraryList"></div>
+    <div id="libraryEmpty" style="text-align:center;padding:40px 0;">
+      <div style="font-size:36px;opacity:.3;margin-bottom:12px;">◑</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;">No tienes ISRCs guardados.<br/>Genera uno y guárdalo aquí.</div>
+    </div>
+    <button class="btn btn-ghost" onclick="clearLibrary()" style="margin-top:8px;">BORRAR TODOS</button>
+  </div>
+
+  <!-- GUIDE TAB -->
+  <div id="tab-guide" style="display:none;">
+    <div class="card mint-card">
+      <div class="sec-lbl mint">¿Qué es un ISRC?</div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px;">El <strong style="color:#fff">International Standard Recording Code</strong> es el código único e irrepetible que identifica cada grabación de audio o video musical en el mundo. Es el "DNI" de tu canción.</p>
+      <p style="font-size:12px;color:var(--muted);line-height:1.7;">Sin ISRC, plataformas como Spotify, Apple Music o YouTube no pueden rastrear correctamente tus reproducciones ni pagarte regalías de forma precisa.</p>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl mint">Cómo obtener ISRCs oficiales</div>
+      <div class="guide-item">
+        <div class="guide-num">1</div>
+        <div><div class="guide-title">Tu distribuidor (más fácil)</div><div class="guide-desc">DistroKid, TuneCore, CD Baby y la mayoría de distribuidores asignan ISRCs automáticamente al subir tu canción. Sin coste adicional. Es la opción más sencilla para artistas independientes.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">2</div>
+        <div><div class="guide-title">Tu PRO (más control)</div><div class="guide-desc">SGAE (España), ASCAP/BMI (EE.UU.), SOCAN (Canadá). Registras tú mismo el código ligado a tu obra. Tienes control total sobre el ISRC y no dependes del distribuidor.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">3</div>
+        <div><div class="guide-title">IFPI directamente</div><div class="guide-desc">Si tienes sello propio, puedes solicitar un código de registrante a la IFPI de tu país. Esto te permite generar ISRCs ilimitados bajo tu propia identidad de sello.</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl mint">Reglas importantes</div>
+      <div class="guide-item">
+        <div class="guide-num">!</div>
+        <div><div class="guide-title">Un ISRC por versión</div><div class="guide-desc">La versión original, el remix, el acoustic version, el live version — cada uno necesita su propio ISRC. No reutilices el mismo código para versiones distintas.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">!</div>
+        <div><div class="guide-title">Es permanente</div><div class="guide-desc">Un ISRC asignado nunca cambia ni se reasigna a otra canción, aunque el tema se elimine de las plataformas.</div></div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-num">!</div>
+        <div><div class="guide-title">Guarda un registro</div><div class="guide-desc">Mantén una lista de todos tus ISRCs con el título del track y la fecha. Usa la sección "Mis ISRC" de esta herramienta para organizarlos.</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const tg=window.Telegram?.WebApp;
+  if(tg){tg.ready();tg.expand();}
+
+  const STORE_KEY='av_isrc_v1';
+  let library=[];
+  try{library=JSON.parse(localStorage.getItem(STORE_KEY))||[];}catch(e){library=[];}
+  const persist=()=>localStorage.setItem(STORE_KEY,JSON.stringify(library));
+
+  let lastISRC='', lastTrack='';
+
+  window.switchTab=t=>{
+    ['gen','validate','library','guide'].forEach(x=>{
+      document.getElementById('tab-'+x).style.display=x===t?'block':'none';
+      document.querySelector(`.ntab[data-t="${x}"]`)?.classList.toggle('active',x===t);
+    });
+    if(t==='library') renderLibrary();
+  };
+
+  window.generateISRC=()=>{
+    const country=document.getElementById('country').value;
+    const reg=document.getElementById('registrant').value.trim().toUpperCase();
+    const year=document.getElementById('year').value||new Date().getFullYear().toString().slice(-2);
+    const desig=parseInt(document.getElementById('desig').value||'1');
+    const track=document.getElementById('trackName').value.trim();
+
+    if(!reg||reg.length!==3){alert('El código registrante debe tener exactamente 3 caracteres.');return;}
+
+    const yr=year.toString().slice(-2).padStart(2,'0');
+    const num=desig.toString().padStart(5,'0');
+    const isrc=`${country}-${reg}-${yr}-${num}`;
+    lastISRC=isrc; lastTrack=track||'Sin título';
+
+    document.getElementById('isrcCode').textContent=isrc;
+    document.getElementById('isrcParts').innerHTML=`
+      <div class="isrc-part"><span class="part-val country">${country}</span><span class="part-lbl">PAÍS</span></div>
+      <div class="sep">-</div>
+      <div class="isrc-part"><span class="part-val reg">${reg}</span><span class="part-lbl">REGISTRANTE</span></div>
+      <div class="sep">-</div>
+      <div class="isrc-part"><span class="part-val year">${yr}</span><span class="part-lbl">AÑO</span></div>
+      <div class="sep">-</div>
+      <div class="isrc-part"><span class="part-val num">${num}</span><span class="part-lbl">NÚMERO</span></div>`;
+
+    document.getElementById('genResult').style.display='block';
+    // Auto-increment for next
+    document.getElementById('desig').value=desig+1;
+  };
+
+  window.copyISRC=()=>{
+    navigator.clipboard?.writeText(lastISRC).then(()=>{
+      if(tg) tg.showAlert('✅ ISRC copiado: '+lastISRC);
+      else alert('Copiado: '+lastISRC);
+    });
+  };
+
+  window.saveISRC=()=>{
+    if(!lastISRC){return;}
+    library.unshift({id:Date.now(),isrc:lastISRC,track:lastTrack,date:new Date().toLocaleDateString('es-ES')});
+    persist();
+    if(tg) tg.showAlert('✅ Guardado en tu biblioteca.');
+    else alert('Guardado.');
+    renderLibrary();
+  };
+
+  window.validateISRC=val=>{
+    const el=document.getElementById('validateResult');
+    if(!val||val.length<2){el.innerHTML='';return;}
+    const clean=val.replace(/-/g,'').toUpperCase();
+    if(clean.length!==12){el.innerHTML=`<p class="valid-err">✕ Longitud incorrecta: ${clean.length}/12 caracteres</p>`;return;}
+    if(!/^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$/.test(clean)){el.innerHTML=`<p class="valid-err">✕ Formato incorrecto. Verifica los caracteres.</p>`;return;}
+    const country=clean.slice(0,2),reg=clean.slice(2,5),yr=clean.slice(5,7),num=clean.slice(7);
+    el.innerHTML=`
+      <p class="valid-ok" style="margin-bottom:10px;">✓ ISRC válido</p>
+      <div style="background:var(--s2);border:1px solid rgba(0,245,160,.2);border-radius:10px;padding:12px;font-family:'Space Mono',monospace;font-size:10px;line-height:2;color:var(--muted);">
+        País: <strong style="color:#fff">${country}</strong><br/>
+        Registrante: <strong style="color:#fff">${reg}</strong><br/>
+        Año: <strong style="color:#fff">20${yr}</strong><br/>
+        Número: <strong style="color:#fff">${num}</strong>
+      </div>`;
+  };
+
+  function renderLibrary(){
+    const list=document.getElementById('libraryList');
+    const empty=document.getElementById('libraryEmpty');
+    if(!library.length){list.innerHTML='';empty.style.display='block';return;}
+    empty.style.display='none';
+    list.innerHTML=library.map((item,i)=>`
+      <div class="track-item">
+        <div>
+          <div class="track-name">${item.track}</div>
+          <div class="track-isrc">${item.isrc}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);margin-top:2px;">${item.date}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+          <button class="copy-btn" onclick="copyOne('${item.isrc}')">COPIAR</button>
+          <button class="del-btn" onclick="deleteOne(${i})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  window.copyOne=isrc=>{
+    navigator.clipboard?.writeText(isrc).then(()=>{
+      if(tg) tg.showAlert('✅ '+isrc);
+    });
+  };
+  window.deleteOne=i=>{
+    library.splice(i,1);persist();renderLibrary();
+  };
+  window.clearLibrary=()=>{
+    const del=()=>{library=[];persist();renderLibrary();};
+    if(tg?.showConfirm) tg.showConfirm('¿Borrar todos los ISRCs guardados?',ok=>{if(ok)del();});
+    else if(confirm('¿Borrar todos?')) del();
+  };
+  window.goBack=()=>{if(tg)tg.close();else history.back();};
+})();
+</script>
+</body>
+</html>

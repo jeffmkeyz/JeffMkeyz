@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Bio Generator · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="genre-db.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;--bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);--muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;}
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--mint);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+    #main{padding:16px 18px 100px;}
+    .card{background:var(--s);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+    .sec-lbl{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--mint);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+    .sec-lbl::before{content:'';width:14px;height:1px;background:var(--mint);}
+    .lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:block;}
+    .inp{width:100%;padding:10px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:10px;transition:border-color .2s;}
+    .inp:focus{border-color:rgba(0,245,160,.35);}
+    textarea.inp{resize:none;line-height:1.6;}
+    select.inp option{background:var(--s2);}
+    .row{display:flex;gap:8px;}
+    .row>div{flex:1;min-width:0;}
+    .pill-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .pill{padding:5px 10px;border-radius:20px;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;transition:all .2s;}
+    .pill.sel{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.35);color:var(--mint);}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border:none;border-radius:12px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;width:100%;}
+    .btn:active{transform:scale(.96);}
+    .btn-mint{background:var(--mint);color:#000;}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .btn-purple{background:linear-gradient(135deg,var(--purple),var(--pink));color:#fff;}
+    #tabs{display:flex;gap:6px;padding:0 0 0;margin-bottom:12px;}
+    .tab{flex:1;padding:8px 0;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.08em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;text-align:center;}
+    .tab.active{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.3);color:var(--mint);}
+    .bio-block{margin-bottom:14px;}
+    .bio-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .bio-label{font-size:13px;font-weight:700;color:#fff;}
+    .bio-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+    .copy-btn{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;padding:5px 10px;border-radius:8px;background:var(--s2);border:1px solid var(--border);color:var(--mint);cursor:pointer;}
+    .copy-btn.copied{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.3);}
+    .bio-text{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;color:var(--text);line-height:1.75;white-space:pre-wrap;}
+    .divrow{display:flex;align-items:center;gap:10px;margin:4px 0 12px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+    #results{display:none;}
+    .empty{text-align:center;padding:36px 0;}
+    .empty-icon{font-size:36px;opacity:.3;margin-bottom:12px;}
+    .empty-txt{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;}
+    .lang-toggle{display:flex;gap:6px;margin-bottom:12px;}
+  </style>
+</head>
+<body>
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">◎ MARKETING · FREE</div>
+      <div class="hdr-title">Bio Generator</div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div class="card">
+    <div class="sec-lbl">Tu información</div>
+    <div class="row">
+      <div><label class="lbl">Nombre artístico</label><input class="inp" id="artist" placeholder="Jeff Mkeyz"/></div>
+      <div><label class="lbl">País/Ciudad</label><input class="inp" id="city" placeholder="España / RD"/></div>
+    </div>
+    <label class="lbl">Género principal</label>
+    <select class="inp" id="genre">
+      <option value="">Selecciona...</option>
+    </select>
+    <label class="lbl">Otros géneros que produces (opcional)</label>
+    <input class="inp" id="genres2" placeholder="Trap, Bachata, Pop Urbano..."/>
+    <label class="lbl">Artistas de referencia / influencias</label>
+    <input class="inp" id="influences" placeholder="Bad Bunny, Wizkid, Frank Ocean..."/>
+    <label class="lbl">Logros o datos relevantes (opcional)</label>
+    <input class="inp" id="achievements" placeholder="100K streams, colaboración con X, lanzado en Y..."/>
+    <label class="lbl">¿Qué define tu sonido? (1 frase tuya)</label>
+    <input class="inp" id="identity" placeholder="Fusiono el sonido urbano dominicano con producción global..."/>
+  </div>
+
+  <div class="card">
+    <div class="sec-lbl">Tono de la bio</div>
+    <div class="pill-wrap" id="toneWrap"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-lbl">Idioma</div>
+    <div class="lang-toggle">
+      <button class="btn btn-mint" id="lang-es" onclick="setLang('es')" style="flex:1;">🇪🇸 ESPAÑOL</button>
+      <button class="btn btn-ghost" id="lang-en" onclick="setLang('en')" style="flex:1;">🇺🇸 ENGLISH</button>
+      <button class="btn btn-ghost" id="lang-both" onclick="setLang('both')" style="flex:1;">AMBOS</button>
+    </div>
+  </div>
+
+  <button class="btn btn-purple" onclick="generate()" style="margin-bottom:16px;">◎ GENERAR BIO</button>
+
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">◎</div>
+    <div class="empty-txt">Rellena tus datos y genera<br/>tu bio profesional al instante.</div>
+  </div>
+
+  <div id="results">
+    <div class="divrow"><div class="divline"></div><div class="divtxt">BIOS GENERADAS</div><div class="divline"></div></div>
+    <div id="tabs">
+      <div class="tab active" data-t="short" onclick="showBio('short')">CORTA</div>
+      <div class="tab" data-t="medium" onclick="showBio('medium')">MEDIA</div>
+      <div class="tab" data-t="long" onclick="showBio('long')">LARGA</div>
+    </div>
+    <div id="bioContainer"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-ghost" onclick="reset()" style="flex:1;">NUEVA BIO</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const tg=window.Telegram?.WebApp;
+  if(tg){tg.ready();tg.expand();}
+  let lang='es', tone='profesional';
+  let bios={};
+
+  const TONES=['profesional','cercano','hype','minimalista','poético'];
+
+  // Genre select
+  const sel=document.getElementById('genre');
+  if(typeof GenreDB!=='undefined'){
+    GenreDB.forSelect().forEach(g=>{
+      const o=document.createElement('option');
+      o.value=g.slug; o.textContent=g.name; sel.appendChild(o);
+    });
+  }
+
+  // Tones
+  const tw=document.getElementById('toneWrap');
+  tw.innerHTML=TONES.map(t=>`<div class="pill ${t==='profesional'?'sel':''}" onclick="setTone('${t}')">${t.toUpperCase()}</div>`).join('');
+
+  window.setTone=t=>{
+    tone=t;
+    document.querySelectorAll('#toneWrap .pill').forEach(p=>p.classList.toggle('sel',p.textContent.toLowerCase()===t));
+  };
+  window.setLang=l=>{
+    lang=l;
+    document.getElementById('lang-es').className='btn '+(l==='es'?'btn-mint':'btn-ghost');
+    document.getElementById('lang-en').className='btn '+(l==='en'?'btn-mint':'btn-ghost');
+    document.getElementById('lang-both').className='btn '+(l==='both'?'btn-mint':'btn-ghost');
+  };
+
+  function buildBio(length, lang, data){
+    const {artist,city,genre,genres2,influences,achievements,identity}=data;
+    const genreObj=typeof GenreDB!=='undefined'?GenreDB.get(genre):null;
+    const gName=genreObj?genreObj.name:genre;
+    const mood=genreObj?genreObj.moods.slice(0,2).join(' y '):'único';
+    const refs=influences||'artistas de referencia del género';
+    const extra=genres2?`, ${genres2}`:'';
+    const ach=achievements?` ${achievements}.`:'';
+    const id=identity||`fusiona ${gName} con producción contemporánea`;
+
+    const TEMPLATES={
+      es:{
+        profesional:{
+          short:`${artist} es productor y artista independiente de ${city||'España'}, especializado en ${gName}${extra}. Con un sonido ${mood}, ${id}.${ach}`,
+          medium:`${artist} es un productor y artista independiente originario de ${city||'España'}, especializado en ${gName}${extra}. Su música, de carácter ${mood}, toma referencia de artistas como ${refs} y las transforma en algo propio. ${id}.${ach} Activo en todas las plataformas digitales con lanzamientos regulares.`,
+          long:`${artist} es productor y artista independiente de ${city||'España'}, con una identidad sonora construida alrededor del ${gName}${extra}. Su propuesta musical, ${mood} en esencia, nace de la influencia de artistas como ${refs} y de una búsqueda constante de autenticidad. ${id}.${ach}\n\nCon una discografía en crecimiento y presencia activa en plataformas digitales y redes sociales, ${artist} representa la nueva generación de artistas independientes que controlan su proceso creativo de inicio a fin — desde la producción hasta la distribución.`,
+        },
+        cercano:{
+          short:`Soy ${artist}, productor y artista de ${city||'España'}. Hago ${gName}${extra} y cada tema nace del mismo lugar: la honestidad.${ach}`,
+          medium:`Soy ${artist}, productor y artista independiente de ${city||'España'}. Llevo años haciendo ${gName}${extra} — música con referentes como ${refs} pero con identidad propia. ${id}.${ach} Cada lanzamiento es una conversación con quien escucha.`,
+          long:`Soy ${artist}. Productor, artista, y alguien que cree que la música independiente es el presente y el futuro.\n\nLlegué al ${gName}${extra} porque es el género que mejor me deja decir lo que quiero decir. Me formé escuchando a ${refs}, pero el camino siempre fue encontrar mi propio sonido. ${id}.${ach}\n\nCada canción que suelto es real. Sin filtros, sin fórmulas. Solo música que vale la pena escuchar.`,
+        },
+        hype:{
+          short:`${artist} 🔥 | Productor & Artista | ${gName}${extra} | ${city||'España'} | ${identity||'Sonido sin límites'}${ach}`,
+          medium:`${artist} no sigue tendencias — las crea. Productor y artista de ${city||'España'} especializado en ${gName}${extra}, con referencias de ${refs} y un sonido que no se parece a nada más. ${id}.${ach} Escúchalo antes de que todos lo conozcan.`,
+          long:`${artist} es el nombre que tienes que saber. Productor y artista independiente de ${city||'España'}, forjado en el ${gName}${extra} con influencias de ${refs}. ${id}.${ach}\n\nNo hay intermediarios, no hay límites. Cada lanzamiento es un statement. La música de ${artist} no te va a dejar indiferente — esa es la idea.`,
+        },
+        minimalista:{
+          short:`${artist}. ${gName}. ${city||'España'}.${ach}`,
+          medium:`${artist} — productor y artista de ${city||'España'}. ${gName}${extra}. ${identity||'Sonido propio'}.${ach}`,
+          long:`${artist}\nProductor & Artista\n${city||'España'}\n\n${gName}${extra}\nReferencias: ${refs}\n${identity||'Sonido independiente'}.\n${ach}`,
+        },
+        poético:{
+          short:`${artist} convierte el ${gName} en algo que se siente antes de entenderse. De ${city||'España'} para el mundo.${ach}`,
+          medium:`Hay artistas que informan y artistas que transforman. ${artist} hace lo segundo. Desde ${city||'España'}, entre el ${gName}${extra} y las influencias de ${refs}, construye canciones que permanecen. ${id}.${ach}`,
+          long:`${artist} aprendió a escuchar antes de aprender a producir. De ${city||'España'}, criado entre el ${gName}${extra} y los sonidos de ${refs}, encontró en la música independiente el único idioma que importa.\n\n${id}.${ach}\n\nSus canciones no intentan gustar a todos. Intentan llegar al que las necesita — y siempre llegan.`,
+        },
+      },
+      en:{
+        profesional:{
+          short:`${artist} is an independent producer and artist from ${city||'Spain'}, specializing in ${gName}${extra}. With a ${mood} sound, ${id}.${ach}`,
+          medium:`${artist} is an independent producer and artist from ${city||'Spain'}, specializing in ${gName}${extra}. Drawing from artists like ${refs}, ${id}.${ach} Consistently releasing new music across all major platforms.`,
+          long:`${artist} is an independent producer and artist from ${city||'Spain'}, with a sound identity built around ${gName}${extra}. Drawing from the influence of ${refs} and a relentless pursuit of authenticity, ${id}.${ach}\n\nWith a growing catalog and active presence across streaming platforms and social media, ${artist} represents the new generation of independent artists who control every step of their creative process — from production to distribution.`,
+        },
+        cercano:{
+          short:`I'm ${artist}, a producer and artist from ${city||'Spain'}. I make ${gName}${extra} and every track starts from the same place: honesty.${ach}`,
+          medium:`I'm ${artist}, an independent producer and artist from ${city||'Spain'}. I've been making ${gName}${extra} for years — music influenced by ${refs} but with my own voice. ${id}.${ach}`,
+          long:`I'm ${artist}. Producer, artist, and someone who believes independent music is the present and the future.\n\nI came to ${gName}${extra} because it lets me say what I need to say. I grew up listening to ${refs}, but the journey was always about finding my own sound. ${id}.${ach}\n\nEvery song I drop is real. No filters, no formulas.`,
+        },
+        hype:{
+          short:`${artist} 🔥 | Producer & Artist | ${gName}${extra} | ${city||'Spain'} | ${identity||'No limits'}${ach}`,
+          medium:`${artist} doesn't follow trends — he creates them. Independent producer and artist from ${city||'Spain'} specializing in ${gName}${extra}, with references from ${refs}. ${id}.${ach} Listen before everyone does.`,
+          long:`${artist} is the name you need to know. Independent producer and artist from ${city||'Spain'}, shaped by ${gName}${extra} with influences from ${refs}. ${id}.${ach}\n\nNo middlemen, no limits. Every release is a statement. ${artist}'s music won't leave you indifferent — that's the point.`,
+        },
+        minimalista:{
+          short:`${artist}. ${gName}. ${city||'Spain'}.${ach}`,
+          medium:`${artist} — producer and artist from ${city||'Spain'}. ${gName}${extra}. ${identity||'Own sound'}.${ach}`,
+          long:`${artist}\nProducer & Artist\n${city||'Spain'}\n\n${gName}${extra}\nReferences: ${refs}\n${identity||'Independent sound'}.\n${ach}`,
+        },
+        poético:{
+          short:`${artist} turns ${gName} into something felt before understood. From ${city||'Spain'} to the world.${ach}`,
+          medium:`Some artists inform. Others transform. ${artist} does the latter. From ${city||'Spain'}, between ${gName}${extra} and the sounds of ${refs}, building songs that stay. ${id}.${ach}`,
+          long:`${artist} learned to listen before learning to produce. From ${city||'Spain'}, raised between ${gName}${extra} and the sounds of ${refs}, he found in independent music the only language that matters.\n\n${id}.${ach}\n\nHis songs don't try to please everyone. They try to reach whoever needs them — and they always do.`,
+        },
+      },
+    };
+
+    const tpl=TEMPLATES[lang]?.[tone]||TEMPLATES.es.profesional;
+    return tpl[length]||'';
+  }
+
+  let activeLen='short';
+  window.showBio=len=>{
+    activeLen=len;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===len));
+    renderBios();
+  };
+
+  function renderBios(){
+    const c=document.getElementById('bioContainer');
+    const langs=lang==='both'?['es','en']:[lang];
+    c.innerHTML=langs.map(l=>{
+      const text=bios[l]?.[activeLen]||'';
+      const wc=text.split(/\s+/).filter(Boolean).length;
+      return `<div class="bio-block">
+        <div class="bio-header">
+          <div>
+            <div class="bio-label">${l==='es'?'🇪🇸 Español':'🇺🇸 English'} — ${activeLen==='short'?'Corta':activeLen==='medium'?'Media':'Larga'}</div>
+            <div class="bio-meta">${wc} palabras · ${text.length} caracteres</div>
+          </div>
+          <button class="copy-btn" id="copy-${l}-${activeLen}" onclick="copyBio('${l}','${activeLen}')">COPIAR</button>
+        </div>
+        <div class="bio-text">${text}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.copyBio=(l,len)=>{
+    const text=bios[l]?.[len]||'';
+    navigator.clipboard?.writeText(text).then(()=>{
+      const btn=document.getElementById(`copy-${l}-${len}`);
+      if(btn){btn.textContent='✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent='COPIAR';btn.classList.remove('copied');},2000);}
+    });
+  };
+
+  window.generate=()=>{
+    const artist=document.getElementById('artist').value.trim();
+    const genre=document.getElementById('genre').value;
+    if(!artist){alert('Añade tu nombre artístico.');return;}
+    if(!genre){alert('Selecciona tu género principal.');return;}
+    const data={
+      artist, genre,
+      city:document.getElementById('city').value.trim(),
+      genres2:document.getElementById('genres2').value.trim(),
+      influences:document.getElementById('influences').value.trim(),
+      achievements:document.getElementById('achievements').value.trim(),
+      identity:document.getElementById('identity').value.trim(),
+    };
+    const langs=lang==='both'?['es','en']:[lang];
+    bios={};
+    langs.forEach(l=>{
+      bios[l]={
+        short:buildBio('short',l,data),
+        medium:buildBio('medium',l,data),
+        long:buildBio('long',l,data),
+      };
+    });
+    activeLen='short';
+    document.getElementById('emptyState').style.display='none';
+    document.getElementById('results').style.display='block';
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t==='short'));
+    renderBios();
+  };
+
+  window.reset=()=>{
+    bios={};
+    document.getElementById('results').style.display='none';
+    document.getElementById('emptyState').style.display='block';
+  };
+  window.goBack=()=>{if(tg)tg.close();else history.back();};
+})();
+</script>
+</body>
+</html>

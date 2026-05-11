@@ -358,19 +358,19 @@ input[type=range]::-webkit-slider-thumb {
 
   <div class="section-title">Plataforma</div>
   <div class="platform-grid">
-    <div class="plat-btn active" onclick="selectPlat(this,'Spotify',0.004)">
+    <div class="plat-btn active" onclick="selectPlat(this,'Spotify',0.001107)">
       <svg class="plat-icon" viewBox="0 0 24 24" fill="#1DB954" width="28" height="28"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
       Spotify
     </div>
-    <div class="plat-btn" onclick="selectPlat(this,'Apple Music',0.008)">
+    <div class="plat-btn" onclick="selectPlat(this,'Apple Music',0.005738)">
       <svg class="plat-icon" viewBox="0 0 24 24" width="28" height="28"><defs><linearGradient id="appleGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f94f6d"/><stop offset="100%" style="stop-color:#fb5c74"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#appleGrad)"/><path fill="white" d="M17.05 8.352c-.17.08-1.87.9-1.87 2.75 0 2.14 1.87 2.9 1.93 2.92-.01.07-.3 1.04-.99 2.02-.61.87-1.25 1.74-2.22 1.74s-1.22-.57-2.32-.57c-1.07 0-1.45.59-2.34.59-.89 0-1.52-.83-2.24-1.84-1.02-1.43-1.85-3.65-1.85-5.74 0-3.35 2.19-5.13 4.34-5.13 1.14 0 2.1.75 2.82.75.68 0 1.76-.8 3.07-.8.5 0 2.22.04 3.36 1.68l-.66.33zM13.5 5.5c.54-.64.93-1.53.93-2.42 0-.12-.01-.25-.03-.35-.88.03-1.94.59-2.57 1.31-.5.56-.96 1.43-.96 2.33 0 .13.02.27.03.31.06.01.14.02.22.02.79 0 1.84-.53 2.38-1.2z"/></svg>
       Apple
     </div>
-    <div class="plat-btn" onclick="selectPlat(this,'Tidal',0.0082)">
+    <div class="plat-btn" onclick="selectPlat(this,'Tidal',0.003433)">
       <svg class="plat-icon" viewBox="0 0 50 50" width="28" height="28"><path fill="#fff" d="M25 5L16.7 13.3 8.3 5 0 13.3l8.3 8.3 8.4-8.3 8.3 8.3 8.3-8.3zM16.7 29.9l8.3-8.3 8.3 8.3 8.4-8.3-8.4-8.3-8.3 8.3-8.3-8.3-8.4 8.3z"/></svg>
       Tidal
     </div>
-    <div class="plat-btn" onclick="selectPlat(this,'YT Premium',0.002)">
+    <div class="plat-btn" onclick="selectPlat(this,'YT Premium',0.001440)">
       <svg class="plat-icon" viewBox="0 0 24 24" fill="#FF0000" width="28" height="28"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
       YouTube
     </div>
@@ -453,7 +453,7 @@ input[type=range]::-webkit-slider-thumb {
       </div>
     </div>
     <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">
-      _Promedio ponderado de todas las plataformas_
+      _Promedio ponderado · Sin Discovery Mode activo_
     </div>
   </div>
 
@@ -493,7 +493,7 @@ input[type=range]::-webkit-slider-thumb {
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor("#030308"); tg.setBackgroundColor("#030308"); }
 
-let currentRate = 0.004;
+let currentRate = 0.001107;
 let currentPlatName = "Spotify";
 let currentPlatEmoji = "🎵";
 
@@ -646,7 +646,7 @@ function update() {
   document.getElementById("earn-per-rep-eur").textContent  = "€" + (perRep * EUR).toFixed(6);
 
   // Total all platforms
-  const allRates    = [0.001106,0.005799,0.003433,0.007441,0.003197,0.010574,0.000850,0.001144,0.001705];
+  const allRates    = [0.001107,0.005738,0.003433,0.007440,0.003197,0.010574,0.000850,0.001144,0.001705];
   const avgRate     = allRates.reduce((a,b) => a+b, 0) / allRates.length;
   const totalDaily  = total * avgRate;
   const totalMonth  = totalDaily * 30;
@@ -765,11 +765,11 @@ function showShareToast() {
 
 // ── REAL ROYALTIES CALCULATOR ──────────────────────────────
 const REAL_PLATFORMS = [
-  { id:'spotify',  name:'Spotify',       emoji:'🎵', rate:0.004,   color:'#1DB954' },
-  { id:'apple',    name:'Apple Music',   emoji:'🍎', rate:0.008,   color:'#fc3c44' },
-  { id:'youtube',  name:'YouTube Music', emoji:'▶️',  rate:0.002,   color:'#FF2D78' },
+  { id:'spotify',  name:'Spotify',       emoji:'🎵', rate:0.001107, color:'#1DB954' },
+  { id:'apple',    name:'Apple Music',   emoji:'🍎', rate:0.005738, color:'#fc3c44' },
+  { id:'youtube',  name:'YouTube Music', emoji:'▶️',  rate:0.007440, color:'#FF2D78' },
   { id:'amazon',   name:'Amazon Music',  emoji:'📦', rate:0.0107,  color:'#ff9900' },
-  { id:'tidal',    name:'Tidal',         emoji:'🌊', rate:0.0082,  color:'#00ffff' },
+  { id:'tidal',    name:'Tidal',         emoji:'🌊', rate:0.003433, color:'#00ffff' },
   { id:'tiktok',   name:'TikTok',        emoji:'🎬', rate:0.00030, color:'#00F5A0' },
   { id:'deezer',   name:'Deezer',        emoji:'🎧', rate:0.0011,  color:'#a238ff' },
 ];

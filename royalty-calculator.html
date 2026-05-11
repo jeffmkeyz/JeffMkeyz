@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Royalty Calculator · Artist Vault</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:     #030308;
+  --card:   #0D0D1A;
+  --border: rgba(255,255,255,.06);
+  --gold:   #FFB830;
+  --green:  #00F5A0;
+  --mint:   #00F5A0;
+  --fire:   #FF2D78;
+  --pink:   #FF2D78;
+  --blue:   #4fc3f7;
+  --purple: #7C3AFF;
+  --text:   #E0E0F0;
+  --muted:  #4A4A6A;
+  --dim:    #2A2A44;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  padding: 0 0 40px;
+}
+::-webkit-scrollbar{width:0;}
+
+.header {
+  text-align: center;
+  padding: 16px 0 24px;
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: "Syne", sans-serif;
+  background: linear-gradient(135deg, #fff, var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+.header p { font-size: 13px; color: var(--muted); }
+
+/* ── TOTAL DISPLAY ── */
+.total-box {
+  background: linear-gradient(135deg, rgba(255,184,48,.06), #0D0D1A);
+  border: 1px solid var(--gold);
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.total-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent); height:1px;
+}
+.total-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.total-streams {
+  font-size: 42px; font-weight: 900; color: var(--gold);
+  letter-spacing: -2px; line-height: 1;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.total-formula {
+  font-size: 12px; color: var(--muted); margin-top: 8px;
+}
+.total-formula span { color: var(--gold); font-weight: 700; }
+
+/* ── EARNINGS ── */
+.earnings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.earn-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+}
+.earn-platform { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.earn-amount { font-size: 18px; font-weight: 800; color: var(--mint); font-family: "Space Mono", monospace; }
+.earn-eur { font-size: 11px; color: var(--muted); }
+
+/* ── SLIDERS ── */
+.section-title {
+  font-size: 8px; color: var(--muted);
+  font-family: "Space Mono", monospace;
+  text-transform: uppercase; letter-spacing: .2em;
+  margin-bottom: 12px; margin-top: 20px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-title::before{content:"";width:14px;height:1px;background:var(--muted);}
+
+.slider-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.slider-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.slider-name { font-size: 14px; font-weight: 700; }
+.slider-val {
+  font-size: 20px; font-weight: 900; color: var(--gold);
+  min-width: 80px; text-align: right;
+}
+input[type=range] {
+  width: 100%; -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 100px;
+  background: var(--border); outline: none; cursor: pointer;
+}
+.preset-btn {
+  padding:6px 10px; border:none; border-radius:8px; font-size:12px;
+  font-weight:700; cursor:pointer; transition:all 0.15s;
+}
+.preset-btn.gold  { background:rgba(255,184,48,.1); color:var(--gold); border:1px solid var(--gold)44; }
+.preset-btn.green { background:rgba(0,245,160,.08); color:var(--green); border:1px solid var(--green)44; }
+.preset-btn.blue  { background:#001a2a; color:var(--blue); border:1px solid var(--blue)44; }
+.preset-btn:active { transform:scale(0.92); }
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px;
+  border-radius: 50%; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.slider-canciones::-webkit-slider-thumb { background: var(--blue); }
+.slider-oyentes::-webkit-slider-thumb  { background: var(--green); }
+.slider-rep::-webkit-slider-thumb     { background: var(--fire); }
+
+.slider-labels {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--muted); margin-top: 6px;
+}
+
+/* ── PLATFORM SELECTOR ── */
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.plat-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ccc;
+  letter-spacing: 0.2px;
+}
+.plat-btn.active {
+  color: var(--gold) !important;
+}
+.plat-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(255,184,48,.06);
+}
+.plat-btn .plat-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+.plat-btn:active { transform: scale(0.95); }
+
+/* ── SHARE BTN ── */
+.btn-share {
+  width: 100%; padding: 16px; border: none; border-radius: 16px;
+  background: linear-gradient(135deg, var(--gold), #ff8c00);
+  font-size: 16px; font-weight: 800; color: #000;
+  cursor: pointer; margin-top: 8px;
+  transition: transform 0.1s;
+}
+.btn-share:active { transform: scale(0.97); }
+
+/* ── MILESTONE ── */
+.milestone {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.milestone .ms-icon { font-size: 28px; }
+.milestone .ms-info { flex: 1; }
+.milestone .ms-name { font-size: 13px; font-weight: 700; }
+.milestone .ms-req  { font-size: 11px; color: var(--muted); }
+.milestone .ms-bar-wrap { background: var(--border); border-radius: 100px; height: 4px; margin-top: 6px; }
+.milestone .ms-bar { height: 100%; border-radius: 100px; background: var(--gold); transition: width 0.5s ease; }
+
+/* ── TOGGLE ── */
+.tabs {
+  display: flex; background: rgba(255,255,255,.03);
+  border-radius: 12px; padding: 4px; margin-bottom: 20px;
+  gap:2px;
+}
+.tab-btn {
+  flex: 1; padding: 8px; border: none; background: transparent;
+  color: var(--muted); font-size: 10px; font-weight: 700;
+  border-radius: 9px; cursor: pointer; transition: all 0.2s;
+  font-family: "Space Mono", monospace; letter-spacing:.06em;
+}
+.tab-btn.active { background: rgba(0,245,160,.1); color: var(--mint); border: 1px solid rgba(0,245,160,.25); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── PULSE ANIM ── */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.pulse { animation: pulse 0.3s ease; }
+</style>
+</head>
+<body>
+
+<div style="position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06);padding:14px 18px;display:flex;align-items:center;gap:10px;">
+  <div onclick="(function(){var t=window.Telegram?.WebApp;if(t)t.close();else history.back();})()" style="width:30px;height:30px;border-radius:8px;background:#0D0D1A;border:1px solid rgba(255,255,255,.06);color:#4A4A6A;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">←</div>
+  <div style="flex:1;">
+    <div style="font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:#FFB830;">⟁ ANÁLISIS · PRO</div>
+    <div style="font-size:16px;font-weight:800;color:#fff;font-family:'Syne',sans-serif;">Royalty Calculator</div>
+  </div>
+  <div id="hdrStreams" style="font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:#FFB830;"></div>
+</div>
+<div style="padding:0 16px;">
+
+<!-- TOTAL -->
+<div class="total-box">
+  <div class="total-label">Streams diarios</div>
+  <div class="total-streams" id="total-streams">0</div>
+  <div class="total-formula">
+    <span id="f-canciones">0</span> canciones ×
+    <span id="f-oyentes">0</span> oyentes ×
+    <span id="f-rep">0</span> rep = <span id="f-total-day" style="color:var(--gold)">0</span> streams/día
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('sim')">SIMULAR</button>
+  <button class="tab-btn" onclick="showTab('earn')">GANANCIAS</button>
+  <button class="tab-btn" onclick="showTab('real')">REALES</button>
+  <button class="tab-btn" onclick="showTab('goals')">METAS</button>
+</div>
+
+<!-- TAB: SIMULADOR -->
+<div class="tab-content active" id="tab-sim">
+
+  <!-- CANCIONES -->
+  <div class="section-title">🎵 Canciones en catálogo</div>
+  <div class="slider-card" style="border-color:#f5c51844;background:linear-gradient(135deg,rgba(255,184,48,.06),#0D0D1A)">
+    <div class="slider-header">
+      <div class="slider-name" style="color:var(--gold)">Canciones</div>
+      <div class="slider-val" id="val-canciones-display" style="color:var(--gold)">1</div>
+    </div>
+    <input type="number" id="canciones-input" min="1" max="99999" value="1"
+      style="width:100%;background:rgba(255,184,48,.1);border:1px solid #f5c51855;border-radius:10px;padding:12px;color:var(--gold);font-size:22px;font-weight:900;text-align:center;outline:none;margin-bottom:12px"
+      oninput="setCancionesManual(this.value)">
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button onclick="setCanciones(1)"   class="preset-btn gold">1</button>
+      <button onclick="setCanciones(5)"   class="preset-btn gold">5</button>
+      <button onclick="setCanciones(10)"  class="preset-btn gold">10</button>
+      <button onclick="setCanciones(25)"  class="preset-btn gold">25</button>
+      <button onclick="setCanciones(50)"  class="preset-btn gold">50</button>
+      <button onclick="setCanciones(100)" class="preset-btn gold">100</button>
+      <button onclick="setCanciones(250)" class="preset-btn gold">250</button>
+      <button onclick="setCanciones(500)" class="preset-btn gold">500</button>
+      <button onclick="setCanciones(1000)"class="preset-btn gold">1000</button>
+    </div>
+  </div>
+
+  <!-- DURACIÓN -->
+  <div class="section-title">⏱️ Duración de canciones (promedio)</div>
+  <div class="slider-card" style="border-color:#9c27b044;background:linear-gradient(135deg,rgba(124,58,255,.06),#0D0D1A)">
+    <div class="slider-header">
+      <div class="slider-name" style="color:#ce93d8">Duración</div>
+      <div class="slider-val" id="val-duracion" style="color:#ce93d8">3:30</div>
+    </div>
+    <input type="text" id="dur-manual" placeholder="3:30" maxlength="5" value="3:30"
+      style="width:100%;background:rgba(124,58,255,.1);border:1px solid #9c27b055;border-radius:10px;padding:12px;color:#ce93d8;font-size:22px;font-weight:900;text-align:center;outline:none;margin-bottom:12px"
+      oninput="parseDuration(this.value)">
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button onclick="setDur('2:00')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">2:00</button>
+      <button onclick="setDur('2:30')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">2:30</button>
+      <button onclick="setDur('3:00')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">3:00</button>
+      <button onclick="setDur('3:30')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">3:30</button>
+      <button onclick="setDur('4:00')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">4:00</button>
+      <button onclick="setDur('5:00')" class="preset-btn" style="background:rgba(124,58,255,.1);color:#ce93d8;border:1px solid #9c27b044">5:00</button>
+    </div>
+    <div style="margin-top:12px;background:rgba(124,58,255,.06);border:1px solid #9c27b033;border-radius:10px;padding:12px;text-align:center">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Tiempo total de reproducción</div>
+      <div style="font-size:20px;font-weight:900;color:#ce93d8" id="total-time-display">—</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px" id="total-time-sub">canciones × duración</div>
+    </div>
+  </div>
+
+  <!-- OYENTES -->
+  <div class="section-title">👥 Oyentes diarios</div>
+  <div class="slider-card" style="border-color:#00e67644;background:linear-gradient(135deg,rgba(0,245,160,.04),#0D0D1A)">
+    <div class="slider-header">
+      <div class="slider-name" style="color:var(--green)">Oyentes</div>
+      <div class="slider-val" id="val-oyentes" style="color:var(--green)">0</div>
+    </div>
+    <input type="number" id="oyentes-manual" min="0" value="0"
+      style="width:100%;background:rgba(0,245,160,.08);border:1px solid #00e67655;border-radius:10px;padding:12px;color:var(--green);font-size:22px;font-weight:900;text-align:center;outline:none;margin-bottom:12px"
+      oninput="setOyentesManual(this.value)">
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button onclick="setOyentes(0)"        class="preset-btn green">0</button>
+      <button onclick="setOyentes(10)"       class="preset-btn green">10</button>
+      <button onclick="setOyentes(50)"       class="preset-btn green">50</button>
+      <button onclick="setOyentes(100)"      class="preset-btn green">100</button>
+      <button onclick="setOyentes(500)"      class="preset-btn green">500</button>
+      <button onclick="setOyentes(1000)"     class="preset-btn green">1K</button>
+      <button onclick="setOyentes(5000)"     class="preset-btn green">5K</button>
+      <button onclick="setOyentes(10000)"    class="preset-btn green">10K</button>
+      <button onclick="setOyentes(50000)"    class="preset-btn green">50K</button>
+      <button onclick="setOyentes(100000)"   class="preset-btn green">100K</button>
+      <button onclick="setOyentes(1000000)"  class="preset-btn green">1M</button>
+      <button onclick="setOyentes(10000000)" class="preset-btn green">10M</button>
+    </div>
+  </div>
+
+  <!-- REPETICIONES -->
+  <div class="section-title">🔁 Repeticiones por oyente/día</div>
+  <div class="slider-card" style="border-color:#4fc3f744;background:linear-gradient(135deg,rgba(79,195,247,.04),#0D0D1A)">
+    <div class="slider-header">
+      <div class="slider-name" style="color:var(--blue)">Repeticiones</div>
+      <div class="slider-val" id="val-rep" style="color:var(--blue)">3×</div>
+    </div>
+    <input type="range" class="slider-rep" id="sl-rep"
+           min="1" max="50" value="3" oninput="update()">
+    <div class="slider-labels"><span>1×</span><span>10×</span><span>20×</span><span>35×</span><span>50×</span></div>
+  </div>
+
+</div>
+
+<!-- TAB: GANANCIAS -->
+<div class="tab-content" id="tab-earn">
+
+  <div class="section-title">Plataforma</div>
+  <div class="platform-grid">
+    <div class="plat-btn active" onclick="selectPlat(this,'Spotify',0.004)">
+      <svg class="plat-icon" viewBox="0 0 24 24" fill="#1DB954" width="28" height="28"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+      Spotify
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'Apple Music',0.008)">
+      <svg class="plat-icon" viewBox="0 0 24 24" width="28" height="28"><defs><linearGradient id="appleGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f94f6d"/><stop offset="100%" style="stop-color:#fb5c74"/></linearGradient></defs><rect width="24" height="24" rx="6" fill="url(#appleGrad)"/><path fill="white" d="M17.05 8.352c-.17.08-1.87.9-1.87 2.75 0 2.14 1.87 2.9 1.93 2.92-.01.07-.3 1.04-.99 2.02-.61.87-1.25 1.74-2.22 1.74s-1.22-.57-2.32-.57c-1.07 0-1.45.59-2.34.59-.89 0-1.52-.83-2.24-1.84-1.02-1.43-1.85-3.65-1.85-5.74 0-3.35 2.19-5.13 4.34-5.13 1.14 0 2.1.75 2.82.75.68 0 1.76-.8 3.07-.8.5 0 2.22.04 3.36 1.68l-.66.33zM13.5 5.5c.54-.64.93-1.53.93-2.42 0-.12-.01-.25-.03-.35-.88.03-1.94.59-2.57 1.31-.5.56-.96 1.43-.96 2.33 0 .13.02.27.03.31.06.01.14.02.22.02.79 0 1.84-.53 2.38-1.2z"/></svg>
+      Apple
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'Tidal',0.0082)">
+      <svg class="plat-icon" viewBox="0 0 50 50" width="28" height="28"><path fill="#fff" d="M25 5L16.7 13.3 8.3 5 0 13.3l8.3 8.3 8.4-8.3 8.3 8.3 8.3-8.3zM16.7 29.9l8.3-8.3 8.3 8.3 8.4-8.3-8.4-8.3-8.3 8.3-8.3-8.3-8.4 8.3z"/></svg>
+      Tidal
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'YT Premium',0.002)">
+      <svg class="plat-icon" viewBox="0 0 24 24" fill="#FF0000" width="28" height="28"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+      YouTube
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'YT Ads',0.003197)">
+      <svg class="plat-icon" viewBox="0 0 24 24" fill="#FF0000" width="28" height="28" style="opacity:0.6"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+      YT Ads
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'Amazon',0.010574)">
+      <svg class="plat-icon" viewBox="0 0 24 24" fill="#FF9900" width="28" height="28"><path d="M13.958 10.09c0 1.232.029 2.256-.591 3.351-.502.891-1.301 1.438-2.186 1.438-1.214 0-1.922-.924-1.922-2.292 0-2.692 2.415-3.182 4.7-3.182v.685zm3.186 7.705c-.209.189-.512.201-.745.074-1.052-.872-1.238-1.276-1.814-2.106-1.734 1.767-2.962 2.297-5.209 2.297-2.66 0-4.731-1.641-4.731-4.925 0-2.565 1.391-4.309 3.37-5.164 1.715-.754 4.11-.891 5.942-1.095v-.41c0-.753.06-1.642-.384-2.294-.385-.579-1.124-.82-1.775-.82-1.205 0-2.277.618-2.54 1.897-.054.285-.261.567-.549.582l-3.061-.333c-.259-.056-.548-.266-.472-.66.703-3.71 4.06-4.829 7.066-4.829 1.537 0 3.547.41 4.758 1.574 1.538 1.436 1.392 3.352 1.392 5.438v4.923c0 1.481.616 2.13 1.192 2.928.204.287.247.631-.01.847l-2.43 2.075zm3.21 1.535c-1.956 1.444-4.794 2.213-7.237 2.213-3.426 0-6.507-1.269-8.836-3.374-.183-.166-.02-.392.2-.263 2.514 1.466 5.622 2.347 8.836 2.347 2.166 0 4.548-.45 6.738-1.385.33-.141.607.216.299.462zm.857-1.466c-.251-.322-1.661-.152-2.295-.076-.193.023-.222-.144-.049-.266 1.124-.79 2.966-.562 3.181-.297.217.267-.056 2.114-.1 2.965-.014.232-.232.341-.452.182-.533-.349-.953-1.191-.285-2.508z"/></svg>
+      Amazon
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'TikTok',0.000850)">
+      <svg class="plat-icon" viewBox="0 0 24 24" width="28" height="28"><path fill="#69C9D0" d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/><path fill="#EE1D52" d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" opacity=".5"/></svg>
+      TikTok
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'Audiomack',0.001144)">
+      <svg class="plat-icon" viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="12" fill="#FE6B00"/><circle cx="12" cy="12" r="7" fill="none" stroke="white" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="white"/></svg>
+      Audiomack
+    </div>
+    <div class="plat-btn" onclick="selectPlat(this,'Pandora',0.001705)">
+      <svg class="plat-icon" viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="12" fill="#224099"/><text x="12" y="17" text-anchor="middle" fill="white" font-size="14" font-weight="900" font-family="Arial">P</text></svg>
+      Pandora
+    </div>
+  </div>
+
+  <div class="section-title">Proyección de ganancias (base diaria)</div>
+  <div class="earnings-grid">
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">☀️ Diario</div>
+      <div class="earn-amount" id="earn-day">$0</div>
+      <div class="earn-eur" id="earn-day-eur">€0</div>
+    </div>
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">📅 Mensual</div>
+      <div class="earn-amount" id="earn-month">$0</div>
+      <div class="earn-eur" id="earn-month-eur">€0</div>
+    </div>
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">📆 Anual</div>
+      <div class="earn-amount" id="earn-year">$0</div>
+      <div class="earn-eur" id="earn-year-eur">€0</div>
+    </div>
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">💲 Por stream</div>
+      <div class="earn-amount" id="earn-rate">$0</div>
+      <div class="earn-eur" id="earn-plat-name">Spotify</div>
+    </div>
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">🎵 Por canción</div>
+      <div class="earn-amount" id="earn-per-song">$0</div>
+      <div class="earn-eur" id="earn-per-song-eur">€0</div>
+    </div>
+    <div class="earn-card" onclick="highlightCard(this)" style="cursor:pointer;transition:all 0.2s">
+      <div class="earn-platform">🔁 Por repetición</div>
+      <div class="earn-amount" id="earn-per-rep">$0</div>
+      <div class="earn-eur" id="earn-per-rep-eur">€0</div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:20px">📊 Total estimado — todas las plataformas</div>
+  <div class="earn-card" style="margin-bottom:12px;border-color:var(--gold);background:rgba(255,184,48,.06)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:13px;color:var(--muted)">Si distribuyes en todas las plataformas</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+      <div>
+        <div style="font-size:10px;color:var(--muted)">☀️ Diario</div>
+        <div style="font-size:16px;font-weight:900;color:var(--gold)" id="total-day">$0</div>
+        <div style="font-size:10px;color:var(--muted)" id="total-day-eur">€0</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted)">📅 Mensual</div>
+        <div style="font-size:16px;font-weight:900;color:var(--gold)" id="total-month">$0</div>
+        <div style="font-size:10px;color:var(--muted)" id="total-month-eur">€0</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted)">📆 Anual</div>
+        <div style="font-size:16px;font-weight:900;color:var(--gold)" id="total-year">$0</div>
+        <div style="font-size:10px;color:var(--muted)" id="total-year-eur">€0</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">
+      _Promedio ponderado de todas las plataformas_
+    </div>
+  </div>
+
+  <button class="btn-share" onclick="shareResults()">📤 Compartir resultados</button>
+</div>
+
+
+<!-- TAB: ROYALTIES REALES -->
+<div class="tab-content" id="tab-real">
+  <div class="section-title" style="margin-top:8px">Introduce tus streams reales</div>
+  <p style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;margin-bottom:14px;">
+    Introduce los streams que tienes en cada plataforma y calcula exactamente cuánto deberías haber ganado.
+  </p>
+
+  <div id="realInputs"></div>
+
+  <div style="background:rgba(255,184,48,.06);border:1px solid rgba(255,184,48,.2);border-radius:14px;padding:16px;margin-bottom:12px;" id="realResults" style="display:none;">
+    <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--gold);letter-spacing:.2em;margin-bottom:12px;">◈ TOTAL ESTIMADO</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:12px;">
+      <div><div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;">TOTAL $</div><div style="font-size:20px;font-weight:700;color:var(--gold);font-family:'Space Mono',monospace;" id="real-total-usd">$0</div></div>
+      <div><div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;">TOTAL €</div><div style="font-size:20px;font-weight:700;color:var(--mint);font-family:'Space Mono',monospace;" id="real-total-eur">€0</div></div>
+      <div><div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;">STREAMS</div><div style="font-size:20px;font-weight:700;color:#fff;font-family:'Space Mono',monospace;" id="real-total-str">0</div></div>
+    </div>
+    <div id="realBreakdown"></div>
+  </div>
+
+  <button class="btn-share" onclick="calcReal()" style="background:linear-gradient(135deg,var(--purple),var(--pink));margin-top:4px;">⟁ CALCULAR ROYALTIES</button>
+</div>
+
+<!-- TAB: METAS -->
+<div class="tab-content" id="tab-goals">
+  <div class="section-title">Progreso hacia tus metas</div>
+  <div id="milestones"></div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor("#030308"); tg.setBackgroundColor("#030308"); }
+
+let currentRate = 0.004;
+let currentPlatName = "Spotify";
+let currentPlatEmoji = "🎵";
+
+const PLAT_EMOJIS = {
+  "Spotify": "🎵",
+  "Apple": "🍎",
+  "Tidal": "🌊",
+  "YT Prem": "▶️",
+  "YT Ads": "📺",
+  "Amazon": "📦",
+  "TikTok": "🎬",
+  "Audiomack": "🎧",
+  "Pandora": "📻",
+};
+const EUR = 0.92;
+
+const MILESTONES = [
+  { icon:"🌱", name:"Primeros 1K",     req:1000 },
+  { icon:"🔥", name:"10K Streams",    req:10000 },
+  { icon:"💫", name:"50K Streams",    req:50000 },
+  { icon:"⭐", name:"100K Streams",   req:100000 },
+  { icon:"🚀", name:"500K Streams",   req:500000 },
+  { icon:"💎", name:"1M Streams",     req:1000000 },
+  { icon:"👑", name:"10M Streams",    req:10000000 },
+  { icon:"🌍", name:"100M Streams",   req:100000000 },
+];
+
+function fmtNum(n) {
+  if (n >= 1000000000) return (n/1000000000).toFixed(1) + "B";
+  if (n >= 1000000)    return (n/1000000).toFixed(1) + "M";
+  if (n >= 1000)       return (n/1000).toFixed(1) + "K";
+  return n.toLocaleString();
+}
+
+function fmtMoney(n) {
+  if (n >= 1000000) return "$" + (n/1000000).toFixed(2) + "M";
+  if (n >= 1000)    return "$" + (n/1000).toFixed(1) + "K";
+  return "$" + n.toFixed(2);
+}
+
+let currentOyentes   = 0;
+let currentCanciones = 1;
+
+function setCanciones(n) {
+  currentCanciones = n;
+  document.getElementById("canciones-input").value = n;
+  document.getElementById("val-canciones-display").textContent = n;
+  update();
+}
+
+function setCancionesManual(val) {
+  const n = parseInt(val);
+  if (!isNaN(n) && n >= 1) {
+    currentCanciones = n;
+    document.getElementById("val-canciones-display").textContent = n;
+    update();
+  }
+}
+let duracionSecs    = 210; // 3:30 default
+
+function parseDuration(val) {
+  const parts = val.split(":");
+  if (parts.length === 2) {
+    const m = parseInt(parts[0]) || 0;
+    const s = parseInt(parts[1]) || 0;
+    if (s < 60) {
+      duracionSecs = m * 60 + s;
+      document.getElementById("val-duracion").textContent = `${m}:${String(s).padStart(2,"0")}`;
+      update();
+    }
+  }
+}
+
+function setDur(str) {
+  document.getElementById("dur-manual").value = str;
+  parseDuration(str);
+}
+
+function setOyentes(n) {
+  currentOyentes = n;
+  document.getElementById("oyentes-manual").value = n;
+  document.getElementById("val-oyentes").textContent = fmtNum(n);
+  update();
+}
+
+function setOyentesManual(val) {
+  const n = parseInt(val) || 0;
+  currentOyentes = n;
+  document.getElementById("val-oyentes").textContent = fmtNum(n);
+  update();
+}
+
+function update() {
+  const canciones = currentCanciones;
+  const oyentes   = currentOyentes;
+  const rep       = parseInt(document.getElementById("sl-rep").value);
+
+  document.getElementById("val-canciones-display") && (document.getElementById("val-canciones-display").textContent = canciones);
+  document.getElementById("val-oyentes").textContent   = fmtNum(oyentes);
+  document.getElementById("val-rep").textContent       = rep + "×";
+
+  const total = canciones * oyentes * rep;
+
+  // Animate total
+  const el = document.getElementById("total-streams");
+  el.textContent = fmtNum(total);
+  el.classList.remove("pulse");
+  void el.offsetWidth;
+  el.classList.add("pulse");
+
+  document.getElementById("f-canciones").textContent  = canciones;
+  document.getElementById("f-oyentes").textContent    = fmtNum(oyentes);
+  document.getElementById("f-rep").textContent        = rep;
+  document.getElementById("f-total-day").textContent  = fmtNum(total);
+
+  // Total playback time: canciones × duracion
+  const totalPlaySecs = canciones * duracionSecs;
+  const ph = Math.floor(totalPlaySecs / 3600);
+  const pm = Math.floor((totalPlaySecs % 3600) / 60);
+  const ps = totalPlaySecs % 60;
+  let timeStr = "";
+  if (ph > 0) timeStr = `${ph}h ${pm}m ${ps}s`;
+  else if (pm > 0) timeStr = `${pm}m ${ps}s`;
+  else timeStr = `${ps}s`;
+  const timeEl = document.getElementById("total-time-display");
+  const subEl  = document.getElementById("total-time-sub");
+  if (timeEl) {
+    timeEl.textContent = timeStr;
+    subEl.textContent  = `${canciones} canciones × ${Math.floor(duracionSecs/60)}:${String(duracionSecs%60).padStart(2,"0")} = ${timeStr}`;
+  }
+
+  // total = streams PER DAY (canciones × oyentes × repeticiones)
+  const daily    = total * currentRate;
+  const monthly  = daily * 30;
+  const yearly   = daily * 365;
+  const perSong  = canciones > 0 ? daily / canciones : 0;
+  const perRep   = (oyentes * rep) > 0 ? daily / (oyentes * rep) : 0;
+
+  document.getElementById("earn-day").textContent          = fmtMoney(daily);
+  document.getElementById("earn-day-eur").textContent      = "€" + (daily * EUR).toFixed(4);
+  document.getElementById("earn-month").textContent        = fmtMoney(monthly);
+  document.getElementById("earn-month-eur").textContent    = "€" + (monthly * EUR).toFixed(2);
+  document.getElementById("earn-year").textContent         = fmtMoney(yearly);
+  document.getElementById("earn-year-eur").textContent     = "€" + (yearly * EUR).toFixed(2);
+  document.getElementById("earn-rate").textContent         = "$" + currentRate.toFixed(6);
+  document.getElementById("earn-plat-name").textContent    = currentPlatName;
+  document.getElementById("earn-per-song").textContent     = fmtMoney(perSong);
+  document.getElementById("earn-per-song-eur").textContent = "€" + (perSong * EUR).toFixed(4);
+  document.getElementById("earn-per-rep").textContent      = fmtMoney(perRep);
+  document.getElementById("earn-per-rep-eur").textContent  = "€" + (perRep * EUR).toFixed(6);
+
+  // Total all platforms
+  const allRates    = [0.001106,0.005799,0.003433,0.007441,0.003197,0.010574,0.000850,0.001144,0.001705];
+  const avgRate     = allRates.reduce((a,b) => a+b, 0) / allRates.length;
+  const totalDaily  = total * avgRate;
+  const totalMonth  = totalDaily * 30;
+  const totalYear   = totalDaily * 365;
+
+  document.getElementById("total-day").textContent       = fmtMoney(totalDaily);
+  document.getElementById("total-day-eur").textContent   = "€" + (totalDaily * EUR).toFixed(4);
+  document.getElementById("total-month").textContent     = fmtMoney(totalMonth);
+  document.getElementById("total-month-eur").textContent = "€" + (totalMonth * EUR).toFixed(2);
+  document.getElementById("total-year").textContent      = fmtMoney(totalYear);
+  document.getElementById("total-year-eur").textContent  = "€" + (totalYear * EUR).toFixed(2);
+
+  // Milestones
+  const ms = document.getElementById("milestones");
+  ms.innerHTML = MILESTONES.map(m => {
+    const pct     = Math.min(100, (total / m.req) * 100);
+    const reached = total >= m.req;
+    return `
+      <div class="milestone" style="${reached ? 'border-color:#f5c518;background:rgba(255,184,48,.06)' : ''}">
+        <div class="ms-icon">${m.icon}</div>
+        <div class="ms-info">
+          <div class="ms-name">${m.name} ${reached ? '✅' : ''}</div>
+          <div class="ms-req">${fmtNum(m.req)} streams necesarios · Actual: ${fmtNum(total)}</div>
+          <div class="ms-bar-wrap">
+            <div class="ms-bar" style="width:${pct}%;background:${reached?'#00e676':'#f5c518'}"></div>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  if (tg) tg.HapticFeedback?.selectionChanged();
+  const hdr = document.getElementById("hdrStreams");
+  if(hdr) hdr.textContent = total > 0 ? fmtNum(total)+' streams/día' : '';
+}
+
+function highlightCard(card) {
+  // Remove highlight from all
+  document.querySelectorAll(".earn-card").forEach(c => {
+    c.style.borderColor = "var(--border)";
+    c.style.background  = "var(--card)";
+    c.style.transform   = "scale(1)";
+  });
+  // Highlight tapped
+  card.style.borderColor = "var(--gold)";
+  card.style.background  = "#1a1500";
+  card.style.transform   = "scale(1.04)";
+  if (window.Telegram?.WebApp) window.Telegram.WebApp.HapticFeedback?.impactOccurred("light");
+  // Reset after 1.5s
+  setTimeout(() => {
+    card.style.borderColor = "var(--border)";
+    card.style.background  = "var(--card)";
+    card.style.transform   = "scale(1)";
+  }, 1500);
+}
+
+function selectPlat(btn, name, rate) {
+  document.querySelectorAll(".plat-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentRate      = rate;
+  currentPlatName  = name;
+  currentPlatEmoji = PLAT_EMOJIS[name] || "🎵";
+  document.getElementById("earn-plat-name").textContent = name;
+  update();
+}
+
+function showTab(id) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + id).classList.add("active");
+  event.target.classList.add("active");
+}
+
+function shareResults() {
+  const canciones = currentCanciones;
+  const oyentes   = fmtNum(currentOyentes);
+  const rep       = document.getElementById("sl-rep").value;
+  const total     = document.getElementById("total-streams").textContent;
+  const daily     = document.getElementById("earn-day").textContent;
+  const monthly   = document.getElementById("earn-month").textContent;
+  const yearly    = document.getElementById("earn-year").textContent;
+
+  const msg = `${currentPlatEmoji} Simulación en ${currentPlatName} — Mkeyz Studio\n\n🎵 ${canciones} canciones\n👥 ${oyentes} oyentes\n🔁 ${rep} repeticiones/día\n🎧 ${total} streams/día\n\n☀️ Diario: ${daily}\n📅 Mensual: ${monthly}\n📆 Anual: ${yearly}\n\n🤖 @MkeyzDAWbot`;
+
+  if (navigator.share) {
+    navigator.share({ title: "Mkeyz Studio — Simulador", text: msg })
+      .catch(() => copyToClipboard(msg));
+  } else {
+    copyToClipboard(msg);
+  }
+}
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+    .then(() => showShareToast())
+    .catch(() => {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      showShareToast();
+    });
+}
+
+function showShareToast() {
+  const toast = document.createElement("div");
+  toast.textContent = "✅ Resultados copiados";
+  toast.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:12px 20px;border-radius:100px;font-size:14px;font-weight:700;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,0.5)";
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+  if (tg) tg.HapticFeedback?.notificationOccurred("success");
+}
+
+
+// ── REAL ROYALTIES CALCULATOR ──────────────────────────────
+const REAL_PLATFORMS = [
+  { id:'spotify',  name:'Spotify',       emoji:'🎵', rate:0.004,   color:'#1DB954' },
+  { id:'apple',    name:'Apple Music',   emoji:'🍎', rate:0.008,   color:'#fc3c44' },
+  { id:'youtube',  name:'YouTube Music', emoji:'▶️',  rate:0.002,   color:'#FF2D78' },
+  { id:'amazon',   name:'Amazon Music',  emoji:'📦', rate:0.0107,  color:'#ff9900' },
+  { id:'tidal',    name:'Tidal',         emoji:'🌊', rate:0.0082,  color:'#00ffff' },
+  { id:'tiktok',   name:'TikTok',        emoji:'🎬', rate:0.00030, color:'#00F5A0' },
+  { id:'deezer',   name:'Deezer',        emoji:'🎧', rate:0.0011,  color:'#a238ff' },
+];
+
+function buildRealInputs() {
+  const wrap = document.getElementById('realInputs');
+  if(!wrap) return;
+  wrap.innerHTML = REAL_PLATFORMS.map(p => `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:20px;flex-shrink:0;">${p.emoji}</div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:4px;">${p.name}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);">$${p.rate.toFixed(4)}/stream</div>
+      </div>
+      <input type="number" id="real-${p.id}" min="0" placeholder="0"
+        style="width:100px;background:#1a1a2e;border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--gold);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;text-align:center;outline:none;"
+        oninput="calcReal()"/>
+    </div>`).join('');
+}
+
+function calcReal() {
+  let totalUSD = 0, totalStreams = 0;
+  const breakdown = [];
+  REAL_PLATFORMS.forEach(p => {
+    const inp = document.getElementById('real-'+p.id);
+    const streams = parseInt(inp?.value) || 0;
+    if(streams > 0) {
+      const earn = streams * p.rate;
+      totalUSD += earn;
+      totalStreams += streams;
+      breakdown.push({ ...p, streams, earn });
+    }
+  });
+  const totalEUR = totalUSD * 0.92;
+  document.getElementById('real-total-usd').textContent = '$'+(totalUSD>=1000?(totalUSD/1000).toFixed(1)+'K':totalUSD.toFixed(2));
+  document.getElementById('real-total-eur').textContent = '€'+(totalEUR>=1000?(totalEUR/1000).toFixed(1)+'K':totalEUR.toFixed(2));
+  document.getElementById('real-total-str').textContent = fmtNum(totalStreams);
+  document.getElementById('realBreakdown').innerHTML = breakdown.map(b => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span>${b.emoji}</span>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#fff;">${b.name}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);">${fmtNum(b.streams)} streams</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--mint);">$${b.earn.toFixed(2)}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);">€${(b.earn*0.92).toFixed(2)}</div>
+      </div>
+    </div>`).join('');
+}
+
+buildRealInputs();
+
+// Init
+update();
+</script>
+</div>
+</body>
+</html>

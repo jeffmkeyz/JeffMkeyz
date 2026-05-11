@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>BPM & Key Detector · Artist Vault</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="genre-db.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;--bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);--muted:#4A4A6A;--dim:#2A2A44;--text:#E0E0F0;}
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+
+    /* HEADER */
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--mint);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+
+    /* TABS */
+    #navTabs{display:flex;gap:6px;padding:12px 18px 0;overflow-x:auto;scrollbar-width:none;}
+    #navTabs::-webkit-scrollbar{display:none;}
+    .ntab{flex-shrink:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;}
+    .ntab.active{background:rgba(0,245,160,.1);border-color:rgba(0,245,160,.3);color:var(--mint);}
+
+    /* MAIN */
+    #main{padding:14px 18px 80px;}
+
+    /* CARDS */
+    .card{background:var(--s);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+    .sec-lbl{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--mint);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .sec-lbl::before{content:'';width:14px;height:1px;background:var(--mint);}
+
+    /* BPM DISPLAY */
+    .bpm-display{text-align:center;padding:24px 0 16px;}
+    .bpm-num{font-family:'Space Mono',monospace;font-size:72px;font-weight:700;line-height:1;color:#fff;letter-spacing:-.02em;transition:all .1s;}
+    .bpm-num.pulse{color:var(--mint);transform:scale(1.04);}
+    .bpm-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.25em;margin-top:6px;}
+    .bpm-confidence{font-family:'Space Mono',monospace;font-size:9px;margin-top:4px;}
+
+    /* TAP BUTTON */
+    #tapBtn{
+      width:100%;padding:28px 0;border:none;border-radius:20px;
+      background:linear-gradient(135deg,var(--purple),var(--pink));
+      font-family:'Space Mono',monospace;font-size:14px;font-weight:700;
+      letter-spacing:.15em;color:#fff;cursor:pointer;
+      transition:transform .08s,box-shadow .08s;
+      box-shadow:0 8px 32px rgba(124,58,255,.3);
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+    }
+    #tapBtn:active{transform:scale(.96);box-shadow:0 4px 16px rgba(124,58,255,.2);}
+    #tapBtn.tapping{background:linear-gradient(135deg,var(--mint),var(--purple));box-shadow:0 8px 32px rgba(0,245,160,.3);}
+
+    /* BEAT INDICATOR */
+    #beatRow{display:flex;justify-content:center;gap:8px;margin:14px 0;}
+    .beat-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);transition:all .1s;}
+    .beat-dot.active{background:var(--mint);box-shadow:0 0 10px var(--mint);}
+
+    /* STATS GRID */
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+    .stat-box{padding:12px;background:var(--s2);border:1px solid var(--border);border-radius:12px;text-align:center;}
+    .stat-val{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:#fff;line-height:1;}
+    .stat-val.mint{color:var(--mint);}
+    .stat-val.gold{color:var(--gold);}
+    .stat-val.purple{color:var(--purple);}
+    .stat-val.pink{color:var(--pink);}
+    .stat-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-top:4px;letter-spacing:.1em;}
+
+    /* KEY DISPLAY */
+    .key-display{background:var(--s2);border:1px solid rgba(0,245,160,.2);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px;}
+    .key-main{font-family:'Space Mono',monospace;font-size:36px;font-weight:700;color:var(--mint);letter-spacing:.1em;}
+    .key-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:.1em;}
+    .key-related{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+    .key-pill{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;padding:5px 10px;border-radius:8px;border:1px solid var(--border);}
+    .key-pill.rel{background:rgba(124,58,255,.1);border-color:rgba(124,58,255,.25);color:var(--purple);}
+    .key-pill.par{background:rgba(255,184,48,.08);border-color:rgba(255,184,48,.2);color:var(--gold);}
+    .key-pill.dom{background:rgba(0,245,160,.08);border-color:rgba(0,245,160,.2);color:var(--mint);}
+
+    /* GENRE MATCH */
+    .genre-match{display:flex;flex-wrap:wrap;gap:6px;}
+    .genre-pill{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);}
+
+    /* UTILS */
+    .ms-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+    .ms-box{padding:10px 8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;text-align:center;}
+    .ms-val{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--gold);}
+    .ms-lbl{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-top:3px;letter-spacing:.08em;}
+
+    /* FILE UPLOAD */
+    .upload-area{border:2px dashed rgba(0,245,160,.2);border-radius:14px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;}
+    .upload-area:hover,.upload-area.drag{border-color:rgba(0,245,160,.5);background:rgba(0,245,160,.04);}
+    .upload-icon{font-size:32px;margin-bottom:10px;opacity:.5;}
+    .upload-txt{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);line-height:1.7;}
+    #fileInput{display:none;}
+
+    /* PROGRESS BAR */
+    .analyze-bar{height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+    .analyze-fill{height:100%;background:linear-gradient(90deg,var(--mint),var(--purple));border-radius:2px;width:0%;transition:width .3s;}
+
+    /* BUTTONS */
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border:none;border-radius:12px;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+    .btn:active{transform:scale(.96);}
+    .btn-mint{background:var(--mint);color:#000;}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .btn-row{display:flex;gap:8px;}
+
+    /* INPUT */
+    .inp{width:100%;padding:10px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;outline:none;text-align:center;transition:border-color .2s;}
+    .inp:focus{border-color:rgba(0,245,160,.35);}
+
+    /* DIVIDER */
+    .divrow{display:flex;align-items:center;gap:10px;margin:4px 0 12px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+
+    /* WAVEFORM */
+    #waveCanvas{width:100%;height:60px;border-radius:8px;display:block;margin-bottom:10px;}
+
+    /* STATUS */
+    .status-tag{font-family:'Space Mono',monospace;font-size:9px;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+    .st-analyzing{background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);color:var(--gold);}
+    .st-done{background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.3);color:var(--mint);}
+    .st-err{background:rgba(255,45,120,.1);border:1px solid rgba(255,45,120,.3);color:var(--pink);}
+  </style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1">
+      <div class="hdr-tag">◈ ANÁLISIS · FREE</div>
+      <div class="hdr-title">BPM & Key Detector</div>
+    </div>
+    <div id="hdrBpm" style="font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--mint);"></div>
+  </div>
+</div>
+
+<div id="navTabs">
+  <div class="ntab active" data-t="tap" onclick="switchTab('tap')">TAP BPM</div>
+  <div class="ntab" data-t="audio" onclick="switchTab('audio')">ANALIZAR</div>
+  <div class="ntab" data-t="key" onclick="switchTab('key')">TONALIDAD</div>
+  <div class="ntab" data-t="utils" onclick="switchTab('utils')">UTILIDADES</div>
+</div>
+
+<div id="main">
+
+  <!-- ── TAP BPM ── -->
+  <div id="tab-tap">
+    <div class="card">
+      <div class="bpm-display">
+        <div class="bpm-num" id="tapBpm">—</div>
+        <div class="bpm-label">BPM</div>
+        <div class="bpm-confidence" id="tapConf" style="color:var(--muted);">Toca el botón al ritmo</div>
+      </div>
+      <div id="beatRow">
+        <div class="beat-dot" id="b0"></div>
+        <div class="beat-dot" id="b1"></div>
+        <div class="beat-dot" id="b2"></div>
+        <div class="beat-dot" id="b3"></div>
+      </div>
+      <button id="tapBtn" onclick="tap()">TAP</button>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-ghost" onclick="resetTap()" style="flex:1;">REINICIAR</button>
+        <button class="btn btn-mint" onclick="useBpm()" id="useBpmBtn" style="flex:1;display:none;">USAR BPM →</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="tapStats" style="display:none;">
+      <div class="stat-box"><div class="stat-val mint" id="s-bpm">—</div><div class="stat-lbl">BPM</div></div>
+      <div class="stat-box"><div class="stat-val gold" id="s-half">—</div><div class="stat-lbl">HALF TIME</div></div>
+      <div class="stat-box"><div class="stat-val purple" id="s-double">—</div><div class="stat-lbl">DOUBLE TIME</div></div>
+      <div class="stat-box"><div class="stat-val pink" id="s-taps">—</div><div class="stat-lbl">TAPS</div></div>
+    </div>
+
+    <div class="card" id="genreCard" style="display:none;">
+      <div class="sec-lbl">Géneros a este BPM</div>
+      <div class="genre-match" id="genreMatch"></div>
+    </div>
+  </div>
+
+  <!-- ── AUDIO ANALYZE ── -->
+  <div id="tab-audio" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl">Analiza un archivo de audio</div>
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="event.preventDefault();this.classList.remove('drag');handleFile(event.dataTransfer.files[0])">
+        <div class="upload-icon">🎵</div>
+        <div class="upload-txt">Toca para subir un archivo de audio<br/>MP3, WAV, M4A, FLAC, OGG</div>
+      </div>
+      <input type="file" id="fileInput" accept="audio/*" onchange="handleFile(this.files[0])"/>
+      <div id="analyzeStatus" style="text-align:center;margin-bottom:10px;"></div>
+      <div class="analyze-bar"><div class="analyze-fill" id="analyzeFill"></div></div>
+      <canvas id="waveCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div id="audioResults" style="display:none;">
+      <div class="divrow"><div class="divline"></div><div class="divtxt">RESULTADO</div><div class="divline"></div></div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val mint" id="ar-bpm">—</div><div class="stat-lbl">BPM</div></div>
+        <div class="stat-box"><div class="stat-val gold" id="ar-key">—</div><div class="stat-lbl">TONALIDAD</div></div>
+        <div class="stat-box"><div class="stat-val purple" id="ar-dur">—</div><div class="stat-lbl">DURACIÓN</div></div>
+        <div class="stat-box"><div class="stat-val pink" id="ar-sr">—</div><div class="stat-lbl">SAMPLE RATE</div></div>
+      </div>
+      <button class="btn btn-mint" onclick="useAudioBpm()" style="margin-bottom:8px;">USAR ESTOS DATOS →</button>
+    </div>
+  </div>
+
+  <!-- ── KEY ── -->
+  <div id="tab-key" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl">Selecciona la tonalidad</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div>
+          <label style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:4px;">NOTA</label>
+          <select class="inp" id="rootNote" onchange="updateKey()" style="text-align:left;">
+            <option value="C">C (Do)</option><option value="C#">C# / Db</option>
+            <option value="D">D (Re)</option><option value="D#">D# / Eb</option>
+            <option value="E">E (Mi)</option><option value="F">F (Fa)</option>
+            <option value="F#">F# / Gb</option><option value="G">G (Sol)</option>
+            <option value="G#">G# / Ab</option><option value="A">A (La)</option>
+            <option value="A#">A# / Bb</option><option value="B">B (Si)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:4px;">MODO</label>
+          <select class="inp" id="keyMode" onchange="updateKey()" style="text-align:left;">
+            <option value="minor">Menor (Minor)</option>
+            <option value="major">Mayor (Major)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="keyInfo">
+      <div class="key-display">
+        <div class="key-main" id="keyMain">Am</div>
+        <div class="key-sub" id="keySub">La Menor · A Minor</div>
+        <div class="key-related" id="keyRelated"></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-lbl">Notas de la escala</div>
+        <div id="scaleNotes" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-lbl">Tonalidades compatibles</div>
+        <div id="compatKeys"></div>
+      </div>
+
+      <div class="card">
+        <div class="sec-lbl">Géneros que usan esta tonalidad</div>
+        <div class="genre-match" id="keyGenres"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UTILS ── -->
+  <div id="tab-utils" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl">BPM → Milisegundos</div>
+      <label style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:6px;">BPM</label>
+      <input class="inp" id="utilBpm" type="number" placeholder="93" oninput="calcUtils()" style="margin-bottom:12px;"/>
+      <div class="ms-grid" id="msGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl">Calculadora de compases</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <div style="flex:1;"><label style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:4px;">BPM</label><input class="inp" id="barBpm" type="number" placeholder="93" oninput="calcBars()"/></div>
+        <div style="flex:1;"><label style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:4px;">COMPASES</label><input class="inp" id="barCount" type="number" placeholder="8" oninput="calcBars()"/></div>
+      </div>
+      <div id="barResult" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--mint);text-align:center;padding:8px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-lbl">Frecuencias de notas (440Hz)</div>
+      <div id="noteFreqs" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const tg=window.Telegram?.WebApp;
+  if(tg){tg.ready();tg.expand();}
+
+  // ── MUSIC THEORY ──────────────────────────────────────────
+  const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const NOTE_NAMES_ES={C:'Do',Db:'Re♭','C#':'Do#',D:'Re','D#':'Re#',Eb:'Mi♭',E:'Mi',F:'Fa','F#':'Fa#',Gb:'Sol♭',G:'Sol','G#':'Sol#',Ab:'La♭',A:'La','A#':'La#',Bb:'Si♭',B:'Si'};
+
+  const MINOR_SCALE=[0,2,3,5,7,8,10]; // W H W W H W W
+  const MAJOR_SCALE=[0,2,4,5,7,9,11]; // W W H W W W H
+
+  const RELATIVE={C:'Am','C#':'A#m',D:'Bm','D#':'Cm',E:'C#m',F:'Dm','F#':'D#m',G:'Em','G#':'Fm',A:'F#m','A#':'Gm',B:'G#m'};
+  const REL_MINOR={'Am':'C','A#m':'C#','Bm':'D','Cm':'D#','C#m':'E','Dm':'F','D#m':'F#','Em':'G','Fm':'G#','F#m':'A','Gm':'A#','G#m':'B'};
+
+  function getScale(root, mode){
+    const idx=NOTES.indexOf(root);
+    const intervals=mode==='minor'?MINOR_SCALE:MAJOR_SCALE;
+    return intervals.map(i=>NOTES[(idx+i)%12]);
+  }
+
+  function getKeyName(root, mode){
+    return root+(mode==='minor'?'m':'');
+  }
+
+  // ── TAP BPM ───────────────────────────────────────────────
+  let taps=[], beatIdx=0, tapTimer=null, currentBpm=0;
+
+  window.tap=()=>{
+    const now=performance.now();
+    taps.push(now);
+    if(taps.length>16) taps.shift();
+    clearTimeout(tapTimer);
+    tapTimer=setTimeout(()=>{ taps=[]; resetTap(); }, 3000);
+
+    // Animate beat dots
+    const dot=document.getElementById('b'+beatIdx%4);
+    dot.classList.add('active');
+    setTimeout(()=>dot.classList.remove('active'),150);
+    beatIdx++;
+
+    // Animate tap button
+    const btn=document.getElementById('tapBtn');
+    btn.classList.add('tapping');
+    setTimeout(()=>btn.classList.remove('tapping'),100);
+
+    if(taps.length<2) return;
+    const intervals=[];
+    for(let i=1;i<taps.length;i++) intervals.push(taps[i]-taps[i-1]);
+    const avg=intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    const bpm=Math.round(60000/avg);
+
+    if(bpm<40||bpm>250) return;
+    currentBpm=bpm;
+    updateTapDisplay(bpm, taps.length);
+  };
+
+  function updateTapDisplay(bpm, tapCount){
+    const el=document.getElementById('tapBpm');
+    el.textContent=bpm;
+    el.classList.add('pulse');
+    setTimeout(()=>el.classList.remove('pulse'),100);
+
+    document.getElementById('tapConf').textContent=
+      tapCount<4?'Sigue tappeando...':tapCount<8?'Buena señal ⚡':'Preciso ✓';
+    document.getElementById('tapConf').style.color=
+      tapCount<4?'var(--muted)':tapCount<8?'var(--gold)':'var(--mint)';
+    document.getElementById('hdrBpm').textContent=bpm+' BPM';
+
+    // Stats
+    document.getElementById('tapStats').style.display='grid';
+    document.getElementById('s-bpm').textContent=bpm;
+    document.getElementById('s-half').textContent=Math.round(bpm/2);
+    document.getElementById('s-double').textContent=bpm*2;
+    document.getElementById('s-taps').textContent=tapCount;
+    document.getElementById('useBpmBtn').style.display='flex';
+
+    // Genre match
+    matchGenres(bpm);
+    calcUtils(bpm);
+  }
+
+  function matchGenres(bpm){
+    if(typeof GenreDB==='undefined') return;
+    const matches=GenreDB.all().filter(g=>bpm>=g.bpm[0]-5&&bpm<=g.bpm[1]+5);
+    if(!matches.length) return;
+    document.getElementById('genreCard').style.display='block';
+    document.getElementById('genreMatch').innerHTML=
+      matches.slice(0,6).map(g=>`<div class="genre-pill">${g.name}</div>`).join('');
+  }
+
+  window.resetTap=()=>{
+    taps=[]; currentBpm=0;
+    document.getElementById('tapBpm').textContent='—';
+    document.getElementById('tapConf').textContent='Toca el botón al ritmo';
+    document.getElementById('tapConf').style.color='var(--muted)';
+    document.getElementById('tapStats').style.display='none';
+    document.getElementById('genreCard').style.display='none';
+    document.getElementById('useBpmBtn').style.display='none';
+    document.getElementById('hdrBpm').textContent='';
+    ['b0','b1','b2','b3'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  };
+
+  window.useBpm=()=>{
+    if(!currentBpm) return;
+    document.getElementById('utilBpm').value=currentBpm;
+    document.getElementById('barBpm').value=currentBpm;
+    calcUtils(currentBpm); calcBars();
+    switchTab('utils');
+  };
+  window.useAudioBpm=()=>{
+    if(!window._audioBpm) return;
+    currentBpm=window._audioBpm;
+    document.getElementById('utilBpm').value=currentBpm;
+    document.getElementById('barBpm').value=currentBpm;
+    calcUtils(currentBpm); calcBars();
+    switchTab('utils');
+  };
+
+  // ── AUDIO ANALYSIS ────────────────────────────────────────
+  window.handleFile=async(file)=>{
+    if(!file) return;
+    const status=document.getElementById('analyzeStatus');
+    const fill=document.getElementById('analyzeFill');
+    document.getElementById('audioResults').style.display='none';
+
+    status.innerHTML='<span class="status-tag st-analyzing">⏳ Cargando audio...</span>';
+    fill.style.width='15%';
+
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      const buf=await file.arrayBuffer();
+      fill.style.width='40%';
+      status.innerHTML='<span class="status-tag st-analyzing">⏳ Decodificando...</span>';
+
+      const decoded=await ctx.decodeAudioData(buf);
+      fill.style.width='65%';
+      status.innerHTML='<span class="status-tag st-analyzing">⏳ Analizando BPM...</span>';
+
+      const bpm=detectBpm(decoded);
+      fill.style.width='85%';
+      status.innerHTML='<span class="status-tag st-analyzing">⏳ Detectando tonalidad...</span>';
+
+      const key=detectKey(decoded);
+      fill.style.width='100%';
+
+      const dur=decoded.duration;
+      const mins=Math.floor(dur/60), secs=Math.floor(dur%60).toString().padStart(2,'0');
+
+      document.getElementById('ar-bpm').textContent=bpm||'—';
+      document.getElementById('ar-key').textContent=key||'—';
+      document.getElementById('ar-dur').textContent=`${mins}:${secs}`;
+      document.getElementById('ar-sr').textContent=(decoded.sampleRate/1000).toFixed(1)+'kHz';
+      document.getElementById('audioResults').style.display='block';
+      status.innerHTML='<span class="status-tag st-done">✓ Análisis completado</span>';
+
+      drawWaveform(decoded);
+      window._audioBpm=bpm;
+      document.getElementById('hdrBpm').textContent=(bpm||'—')+' BPM';
+
+      // Update key tab
+      if(key){
+        const isMinor=key.endsWith('m');
+        const root=key.replace('m','');
+        if(NOTES.includes(root)){
+          document.getElementById('rootNote').value=root;
+          document.getElementById('keyMode').value=isMinor?'minor':'major';
+          updateKey();
+        }
+      }
+
+      ctx.close();
+    }catch(e){
+      status.innerHTML='<span class="status-tag st-err">✕ Error al analizar el archivo</span>';
+      fill.style.width='0%';
+    }
+  };
+
+  function detectBpm(audioBuffer){
+    const data=audioBuffer.getChannelData(0);
+    const sr=audioBuffer.sampleRate;
+    const step=Math.floor(sr*0.01); // 10ms steps
+    const energies=[];
+
+    for(let i=0;i<data.length-step;i+=step){
+      let e=0;
+      for(let j=0;j<step;j++) e+=data[i+j]*data[i+j];
+      energies.push(e/step);
+    }
+
+    // Beat detection via energy threshold
+    const avgE=energies.reduce((a,b)=>a+b,0)/energies.length;
+    const threshold=avgE*1.3;
+    const peaks=[];
+    let lastPeak=-1;
+    const minDist=Math.floor(0.3*sr/step); // min 300ms between beats
+
+    for(let i=1;i<energies.length-1;i++){
+      if(energies[i]>threshold&&energies[i]>energies[i-1]&&energies[i]>energies[i+1]){
+        if(i-lastPeak>minDist){
+          peaks.push(i);
+          lastPeak=i;
+        }
+      }
+    }
+
+    if(peaks.length<4) return null;
+
+    const intervals=[];
+    for(let i=1;i<Math.min(peaks.length,32);i++){
+      intervals.push((peaks[i]-peaks[i-1])*0.01); // seconds
+    }
+    const avgInterval=intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    let bpm=Math.round(60/avgInterval);
+
+    // Normalize to common BPM range
+    while(bpm<70) bpm*=2;
+    while(bpm>180) bpm/=2;
+
+    return Math.round(bpm);
+  }
+
+  function detectKey(audioBuffer){
+    const data=audioBuffer.getChannelData(0);
+    // Sample up to 60 seconds in the middle
+    const sr=audioBuffer.sampleRate;
+    const start=Math.floor(data.length*0.2);
+    const len=Math.min(sr*60, data.length-start);
+    const sample=data.slice(start, start+len);
+
+    // Build chroma profile via simplified DFT
+    const chroma=new Float32Array(12);
+    const A4=440, C0=A4*Math.pow(2,-4.75);
+
+    // Sample every 1024 frames
+    const hop=1024;
+    let count=0;
+    for(let i=0;i<sample.length-hop;i+=hop){
+      // Calculate power at each note frequency
+      for(let n=0;n<12;n++){
+        const freq=C0*Math.pow(2,(n+48)/12); // C4 range
+        let real=0, imag=0;
+        const w=2*Math.PI*freq/sr;
+        for(let j=0;j<Math.min(hop,512);j++){
+          real+=sample[i+j]*Math.cos(w*j);
+          imag+=sample[i+j]*Math.sin(w*j);
+        }
+        chroma[n]+=real*real+imag*imag;
+      }
+      count++;
+    }
+
+    // Normalize
+    const maxC=Math.max(...chroma);
+    if(maxC===0) return null;
+    for(let i=0;i<12;i++) chroma[i]/=maxC;
+
+    // Key profiles (Krumhansl-Schmuckler simplified)
+    const MAJOR_PROFILE=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+    const MINOR_PROFILE=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+
+    let bestScore=-Infinity, bestKey='';
+    for(let root=0;root<12;root++){
+      // Major
+      let mScore=0, minScore=0;
+      for(let i=0;i<12;i++){
+        mScore+=chroma[(i+root)%12]*MAJOR_PROFILE[i];
+        minScore+=chroma[(i+root)%12]*MINOR_PROFILE[i];
+      }
+      if(mScore>bestScore){bestScore=mScore;bestKey=NOTES[root];}
+      if(minScore>bestScore){bestScore=minScore;bestKey=NOTES[root]+'m';}
+    }
+    return bestKey;
+  }
+
+  function drawWaveform(audioBuffer){
+    const canvas=document.getElementById('waveCanvas');
+    canvas.style.display='block';
+    const ctx2=canvas.getContext('2d');
+    canvas.width=canvas.offsetWidth*2;
+    canvas.height=120;
+    ctx2.scale(2,1);
+    const W=canvas.offsetWidth, H=canvas.height;
+    const data=audioBuffer.getChannelData(0);
+    const step=Math.ceil(data.length/W);
+    ctx2.fillStyle='#111120';
+    ctx2.fillRect(0,0,W,H);
+    const grad=ctx2.createLinearGradient(0,0,W,0);
+    grad.addColorStop(0,'#00F5A0'); grad.addColorStop(0.5,'#7C3AFF'); grad.addColorStop(1,'#FF2D78');
+    ctx2.fillStyle=grad;
+    for(let i=0;i<W;i++){
+      let max=0;
+      for(let j=0;j<step;j++){
+        const val=Math.abs(data[i*step+j]||0);
+        if(val>max) max=val;
+      }
+      const h=max*(H-4);
+      ctx2.fillRect(i,(H-h)/2,1,h);
+    }
+  }
+
+  // ── KEY INFO ──────────────────────────────────────────────
+  window.updateKey=()=>{
+    const root=document.getElementById('rootNote').value;
+    const mode=document.getElementById('keyMode').value;
+    const keyName=getKeyName(root,mode);
+    const scale=getScale(root,mode);
+    const enNote=NOTE_NAMES_ES[root]||root;
+
+    document.getElementById('keyMain').textContent=keyName;
+    document.getElementById('keySub').textContent=
+      `${enNote} ${mode==='minor'?'Menor':'Mayor'} · ${root} ${mode==='minor'?'Minor':'Major'}`;
+
+    // Scale notes
+    document.getElementById('scaleNotes').innerHTML=scale.map((n,i)=>
+      `<div class="key-pill" style="background:${i===0?'rgba(0,245,160,.12)':'rgba(255,255,255,.04)'};border-color:${i===0?'rgba(0,245,160,.35)':'var(--border)'};color:${i===0?'var(--mint)':'var(--muted)'};">
+        ${n}${NOTE_NAMES_ES[n]?'<span style="font-size:7px;display:block;opacity:.6">'+NOTE_NAMES_ES[n]+'</span>':''}
+      </div>`).join('');
+
+    // Related keys
+    const relKey=mode==='minor'?REL_MINOR[keyName]||'':RELATIVE[root]||'';
+    const domIdx=(NOTES.indexOf(root)+7)%12;
+    const subIdx=(NOTES.indexOf(root)+5)%12;
+    const dom=NOTES[domIdx]+(mode==='minor'?'m':'');
+    const sub=NOTES[subIdx]+(mode==='minor'?'m':'');
+
+    document.getElementById('keyRelated').innerHTML=`
+      ${relKey?`<div class="key-pill par" title="Relativa">↔ ${relKey}</div>`:''}
+      <div class="key-pill dom" title="Dominante">▲ ${dom}</div>
+      <div class="key-pill rel" title="Subdominante">▼ ${sub}</div>`;
+
+    // Compatible keys for production
+    const compatKeys=[relKey,dom,sub].filter(Boolean);
+    document.getElementById('compatKeys').innerHTML=
+      `<p style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:10px;">Puedes mezclar o samplear tracks en estas tonalidades sin que suenen disonantes:</p>`+
+      `<div style="display:flex;flex-wrap:wrap;gap:6px;">${compatKeys.map(k=>`<div class="key-pill rel">${k}</div>`).join('')}</div>`;
+
+    // Genre associations by common keys
+    const KEY_GENRES={
+      'Am':['Trap Latino','Bachata','R&B','Drill'],'Dm':['Bachata','Lo-Fi','Afrobeat'],
+      'Gm':['Reggaeton','Dembow','House'],'Cm':['Trap','R&B','Drill'],
+      'Fm':['Boom Bap','UK Garage','Lo-Fi'],'Em':['Trap','Corridos','Pop Urbano'],
+      'Bm':['Trap Latino','Corridos Tumbados'],'C':['Pop Urbano','EDM','Afrobeat'],
+      'G':['Pop Urbano','Corridos','Country'],'F':['House','EDM','Soul'],
+      'D':['Bachata moderna','Pop Latino'],'A':['Afrobeat','R&B','Soul'],
+    };
+    const genres=KEY_GENRES[keyName]||KEY_GENRES[root]||['Todos los géneros'];
+    document.getElementById('keyGenres').innerHTML=genres.map(g=>`<div class="genre-pill">${g}</div>`).join('');
+  };
+
+  // ── UTILS ─────────────────────────────────────────────────
+  window.calcUtils=(bpmOverride)=>{
+    const bpm=bpmOverride||parseFloat(document.getElementById('utilBpm').value);
+    if(!bpm||bpm<20) return;
+    const beat=60000/bpm;
+    const items=[
+      {lbl:'1/4 (BEAT)',val:beat.toFixed(1)+'ms'},
+      {lbl:'1/8',val:(beat/2).toFixed(1)+'ms'},
+      {lbl:'1/16',val:(beat/4).toFixed(1)+'ms'},
+      {lbl:'1/8T',val:(beat/3).toFixed(1)+'ms'},
+      {lbl:'1/4 DOT',val:(beat*1.5).toFixed(1)+'ms'},
+      {lbl:'1/2',val:(beat*2).toFixed(1)+'ms'},
+    ];
+    document.getElementById('msGrid').innerHTML=items.map(i=>
+      `<div class="ms-box"><div class="ms-val">${i.val}</div><div class="ms-lbl">${i.lbl}</div></div>`
+    ).join('');
+  };
+
+  window.calcBars=()=>{
+    const bpm=parseFloat(document.getElementById('barBpm').value);
+    const bars=parseInt(document.getElementById('barCount').value)||8;
+    if(!bpm) return;
+    const totalMs=bars*(4*60000/bpm);
+    const s=totalMs/1000;
+    document.getElementById('barResult').textContent=
+      `${bars} compases = ${s.toFixed(2)}s (${(s/60).toFixed(2)} min)`;
+  };
+
+  // Note frequencies
+  (function buildFreqs(){
+    const el=document.getElementById('noteFreqs');
+    if(!el) return;
+    const A4=440;
+    el.innerHTML=NOTES.map((n,i)=>{
+      const semis=i-9; // A4 is index 9 in NOTES from C
+      const freq=A4*Math.pow(2,semis/12);
+      return `<div class="ms-box"><div class="ms-val" style="font-size:10px;">${freq.toFixed(1)}Hz</div><div class="ms-lbl">${n}4</div></div>`;
+    }).join('');
+  })();
+
+  // ── TABS ──────────────────────────────────────────────────
+  window.switchTab=t=>{
+    ['tap','audio','key','utils'].forEach(x=>{
+      document.getElementById('tab-'+x).style.display=x===t?'block':'none';
+      document.querySelector(`.ntab[data-t="${t}"]`)?.classList.toggle('active',false);
+    });
+    document.querySelector(`.ntab[data-t="${t}"]`)?.classList.add('active');
+  };
+
+  window.goBack=()=>{if(tg)tg.close();else history.back();};
+
+  // Init key tab
+  updateKey();
+})();
+</script>
+</body>
+</html>

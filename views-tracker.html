@@ -149,7 +149,7 @@ canvas#chart {
 .sma-leg-line { height:2px; border-radius:1px; }
 .sma-leg-dot  { width:8px; height:8px; border-radius:50%; border:1.5px solid #fff; }
 /* SUPPORT LINES TOGGLE */
-.support-row { display:flex; align-items:center; gap:5px; overflow-x:auto; padding:6px 16px 4px; scrollbar-width:none; position:relative; z-index:1; }
+.support-row { display:flex; align-items:center; gap:5px; overflow-x:auto; padding:4px 16px; scrollbar-width:none; position:relative; z-index:1; }
 .sline-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; flex-shrink:0; }
 .slpill {
   display:flex; align-items:center; gap:4px; padding:4px 9px;
@@ -159,6 +159,36 @@ canvas#chart {
 .slpill.on  { color:#000; }
 .slpill.off { opacity:0.3; filter:grayscale(0.6); background:transparent !important; }
 .slpill:active { transform:scale(0.9); }
+
+/* MODE SELECTOR */
+.mode-row {
+  display:flex; align-items:center; gap:5px; overflow-x:auto;
+  padding:8px 16px 4px; scrollbar-width:none; position:relative; z-index:1;
+}
+.mode-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; flex-shrink:0; }
+.mpill-mode {
+  flex-shrink:0; padding:5px 12px; border-radius:100px;
+  font-size:11px; font-weight:700; border:1.5px solid var(--border);
+  background:var(--card); color:var(--muted); cursor:pointer;
+  white-space:nowrap; transition:all 0.18s; user-select:none;
+}
+.mpill-mode.active { color:#000; border-color:transparent; }
+.mpill-mode:active { transform:scale(0.94); }
+
+/* RSI PANEL */
+.rsi-section {
+  padding:0 16px 4px; position:relative; z-index:1; display:none;
+}
+.rsi-label {
+  font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px;
+  padding:4px 0 3px; display:flex; align-items:center; gap:8px;
+}
+.rsi-val { font-family:'Space Mono',monospace; font-size:12px; font-weight:900; }
+canvas#rsi-chart {
+  width:100%; border-radius:10px; display:block;
+  background:var(--panel); border:1px solid var(--border);
+  touch-action:none;
+}
 
 /* EARNINGS */
 .earn-box {
@@ -524,8 +554,26 @@ canvas#chart {
   </div>
 </div>
 
-<!-- Líneas de soporte toggles -->
-<div class="support-row" id="support-row">
+<!-- MODE SELECTOR -->
+<div class="mode-row" id="mode-row">
+  <span class="mode-lbl">Modo:</span>
+  <div class="mpill-mode" data-mode="clean"   onclick="setMode('clean',this)"   style="border-color:#555">⬜ Limpio</div>
+  <div class="mpill-mode" data-mode="trend"   onclick="setMode('trend',this)"   style="border-color:#b06afc">📈 Tendencia</div>
+  <div class="mpill-mode" data-mode="soporte" onclick="setMode('soporte',this)" style="border-color:#FFB830">🎯 Soporte</div>
+  <div class="mpill-mode" data-mode="fib"     onclick="setMode('fib',this)"     style="border-color:#E2C27D">φ Fibonacci</div>
+  <div class="mpill-mode active" data-mode="rsi" onclick="setMode('rsi',this)" style="border-color:#4fc3f7;background:#4fc3f7;color:#000">📊 RSI</div>
+  <div class="mpill-mode" data-mode="full"    onclick="setMode('full',this)"    style="border-color:#00F5A0">🔬 Completo</div>
+</div>
+
+<!-- RSI Panel -->
+<div class="rsi-section" id="rsi-section">
+  <div class="rsi-label">
+    RSI <span style="color:#555">(14)</span>
+    <span class="rsi-val" id="rsi-val">—</span>
+    <span id="rsi-zone" style="font-size:10px;font-weight:700"></span>
+  </div>
+  <canvas id="rsi-chart" height="70"></canvas>
+</div>
   <span class="sline-lbl">Líneas:</span>
 </div>
 
@@ -680,7 +728,221 @@ let activePlats   = new Set(); // which platforms are visible in Todo mode
 let zoomStart=0, zoomEnd=Infinity;
 function zoomReset(){ zoomStart=0; zoomEnd=Infinity; updateScrollbar?.(); }
 function getZoomed(data){ const e=zoomEnd===Infinity?data.length-1:Math.min(zoomEnd,data.length-1); return data.slice(zoomStart,e+1); }
-let supportLines = { avg:true, max:true, min:false, trend:false, resist:false, fib:false };
+let supportLines = { avg:false, max:false, min:false, trend:false, resist:false, fib:false };
+let currentMode  = "rsi";   // default mode on load
+let showRSI      = true;
+
+// ── MODE PRESETS ──────────────────────────────────────────
+const MODE_PRESETS = {
+  clean:   { avg:false, max:false, min:false, trend:false, resist:false, fib:false, rsi:false },
+  trend:   { avg:false, max:false, min:false, trend:true,  resist:false, fib:false, rsi:false },
+  soporte: { avg:true,  max:true,  min:true,  trend:false, resist:true,  fib:false, rsi:false },
+  fib:     { avg:false, max:false, min:false, trend:false, resist:false, fib:true,  rsi:false },
+  rsi:     { avg:false, max:false, min:false, trend:false, resist:false, fib:false, rsi:true  },
+  full:    { avg:true,  max:true,  min:false, trend:true,  resist:true,  fib:true,  rsi:true  },
+};
+
+function setMode(mode, btn) {
+  currentMode = mode;
+  const preset = MODE_PRESETS[mode];
+  supportLines.avg    = preset.avg;
+  supportLines.max    = preset.max;
+  supportLines.min    = preset.min;
+  supportLines.trend  = preset.trend;
+  supportLines.resist = preset.resist;
+  supportLines.fib    = preset.fib;
+  showRSI             = preset.rsi;
+
+  // Update mode pills
+  document.querySelectorAll(".mpill-mode").forEach(p => {
+    p.classList.remove("active");
+    const colors = { clean:"#555", trend:"#b06afc", soporte:"#FFB830", fib:"#E2C27D", rsi:"#4fc3f7", full:"#00F5A0" };
+    const c = colors[p.dataset.mode] || "#555";
+    p.style.background = "transparent";
+    p.style.borderColor = c;
+    p.style.color = c;
+  });
+  if (btn) {
+    btn.classList.add("active");
+    const colors = { clean:"#aaa", trend:"#b06afc", soporte:"#FFB830", fib:"#E2C27D", rsi:"#4fc3f7", full:"#00F5A0" };
+    const c = colors[mode] || "#aaa";
+    btn.style.background = c;
+    btn.style.borderColor = c;
+    btn.style.color = "#000";
+  }
+
+  // Show/hide RSI panel
+  const rsiSection = document.getElementById("rsi-section");
+  if (rsiSection) rsiSection.style.display = showRSI ? "block" : "none";
+
+  // Update fib/res legend badges
+  const fibLeg = document.getElementById("fib-leg");
+  const resLeg = document.getElementById("res-leg");
+  if (fibLeg) fibLeg.style.display = preset.fib ? "flex" : "none";
+  if (resLeg) resLeg.style.display = preset.resist ? "flex" : "none";
+
+  buildSupportRow();
+  const d = getFiltered();
+  drawChart(getZoomed(d));
+  if (showRSI) drawRSI(getZoomed(d));
+  updateScrollbar();
+  if (tg) tg.HapticFeedback?.impactOccurred("light");
+}
+
+// ── RSI CALCULATOR ────────────────────────────────────────
+function calcRSI(vals, period = 14) {
+  if (vals.length < period + 1) return vals.map(() => null);
+  const rsi = new Array(vals.length).fill(null);
+  // Initial avg gain/loss
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = vals[i] - vals[i-1];
+    if (diff > 0) avgGain += diff;
+    else avgLoss += Math.abs(diff);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  rsi[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  // Wilder's smoothing
+  for (let i = period + 1; i < vals.length; i++) {
+    const diff = vals[i] - vals[i-1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? Math.abs(diff) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    rsi[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  }
+  return rsi;
+}
+
+// ── RSI DRAW ──────────────────────────────────────────────
+function drawRSI(data) {
+  const canvas = document.getElementById("rsi-chart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth * dpr;
+  const H = 70 * dpr;
+  canvas.width = W; canvas.height = H;
+
+  ctx.fillStyle = "#0d0f1a";
+  ctx.fillRect(0, 0, W, H);
+
+  if (!data.length) return;
+
+  const vals  = data.map(e => getVal(e));
+  const rsi   = calcRSI(vals, 14);
+  const valid = rsi.filter(v => v !== null);
+  if (!valid.length) {
+    ctx.fillStyle = "#4a4f6a"; ctx.font = `${10*dpr}px -apple-system`;
+    ctx.textAlign = "center";
+    ctx.fillText("RSI requiere al menos 15 datos", W/2, H/2);
+    return;
+  }
+
+  const pad  = { t:6*dpr, b:14*dpr, l:4*dpr, r:50*dpr };
+  const cW   = W - pad.l - pad.r;
+  const cH   = H - pad.t - pad.b;
+  const toX  = i  => pad.l + (i / Math.max(data.length-1,1)) * cW;
+  const toY  = v  => pad.t + cH - ((v - 0) / 100) * cH;
+
+  // Grid lines: 70, 50, 30
+  const gridLevels = [
+    { v:70, color:"rgba(255,77,77,0.3)",   label:"70" },
+    { v:50, color:"rgba(200,200,200,0.15)", label:"50" },
+    { v:30, color:"rgba(80,220,160,0.3)",  label:"30" },
+  ];
+  gridLevels.forEach(g => {
+    const py = toY(g.v);
+    ctx.strokeStyle = g.color; ctx.lineWidth = dpr;
+    try{ctx.setLineDash([4*dpr,4*dpr]);}catch(e){}
+    ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W-pad.r, py); ctx.stroke();
+    try{ctx.setLineDash([]);}catch(e){}
+    ctx.fillStyle = g.color; ctx.font = `${7.5*dpr}px -apple-system`;
+    ctx.textAlign = "right";
+    ctx.fillText(g.label, W - pad.r + 46*dpr, py + 3*dpr);
+  });
+
+  // Overbought fill (above 70)
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = "#FF4D4D";
+  ctx.fillRect(pad.l, pad.t, cW, toY(70) - pad.t);
+
+  // Oversold fill (below 30)
+  ctx.fillStyle = "#00F5A0";
+  ctx.fillRect(pad.l, toY(30), cW, H - pad.b - toY(30));
+  ctx.restore();
+
+  // RSI line with gradient color
+  ctx.save();
+  ctx.lineWidth = 1.8 * dpr;
+  ctx.lineJoin = "round";
+  ctx.lineCap  = "round";
+
+  let prevX = null, prevY = null, prevRSI = null;
+  rsi.forEach((v, i) => {
+    if (v === null) return;
+    const x = toX(i), y = toY(v);
+    if (prevX === null) { prevX = x; prevY = y; prevRSI = v; return; }
+    const midRSI = (prevRSI + v) / 2;
+    ctx.strokeStyle = midRSI >= 70 ? "#FF4D4D"
+      : midRSI <= 30 ? "#00F5A0"
+      : midRSI >= 50 ? `rgba(100,220,180,0.9)`
+      : `rgba(200,100,100,0.7)`;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(prevX, prevY); ctx.lineTo(x, y); ctx.stroke();
+    prevX = x; prevY = y; prevRSI = v;
+  });
+  ctx.restore();
+
+  // Current RSI dot
+  const lastIdx = rsi.reduce((li, v, i) => v !== null ? i : li, -1);
+  if (lastIdx >= 0) {
+    const lastRSI = rsi[lastIdx];
+    const lx = toX(lastIdx), ly2 = toY(lastRSI);
+    const dotColor = lastRSI >= 70 ? "#FF4D4D" : lastRSI <= 30 ? "#00F5A0" : "#4fc3f7";
+    ctx.save();
+    ctx.beginPath(); ctx.arc(lx, ly2, 3.5*dpr, 0, Math.PI*2);
+    ctx.fillStyle = dotColor; ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2*dpr; ctx.stroke();
+    ctx.restore();
+
+    // Update infobar RSI values
+    const rsiVal  = document.getElementById("rsi-val");
+    const rsiZone = document.getElementById("rsi-zone");
+    if (rsiVal) {
+      rsiVal.textContent = lastRSI.toFixed(1);
+      rsiVal.style.color = dotColor;
+    }
+    if (rsiZone) {
+      if (lastRSI >= 70)      { rsiZone.textContent = "SOBRECOMPRA"; rsiZone.style.color = "#FF4D4D"; }
+      else if (lastRSI <= 30) { rsiZone.textContent = "SOBREVENTA";  rsiZone.style.color = "#00F5A0"; }
+      else if (lastRSI >= 50) { rsiZone.textContent = "ALCISTA";     rsiZone.style.color = "#4fc3f7"; }
+      else                    { rsiZone.textContent = "BAJISTA";     rsiZone.style.color = "#FF8C42"; }
+    }
+  }
+
+  // X labels (month names) synced with main chart
+  const MONTHS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  ctx.fillStyle = "#4a4f6a"; ctx.font = `${7.5*dpr}px -apple-system`; ctx.textAlign = "center";
+  const useMon = data.length > 60;
+  if (useMon) {
+    let lastMon = -1, lastLX = -9999;
+    data.forEach((e, i) => {
+      const dt = new Date(e.date + "T00:00:00");
+      const mon = dt.getMonth();
+      if (mon !== lastMon) {
+        lastMon = mon;
+        const x = toX(i);
+        if (x - lastLX >= 30*dpr) {
+          lastLX = x;
+          ctx.fillText(MONTHS[mon], x, H - pad.b + 10*dpr);
+        }
+      }
+    });
+  }
+}
 let songsSortBy   = "streams";
 
 // ── SUPPORT LINES ─────────────────────────────────────────
@@ -922,6 +1184,9 @@ async function load() {
   });
   buildPills();
   buildSupportRow();
+  // Init mode UI
+  const rsiSection = document.getElementById("rsi-section");
+  if (rsiSection) rsiSection.style.display = showRSI ? "block" : "none";
   document.getElementById("inp-date").value = new Date().toISOString().split("T")[0];
   render(); renderHistory(); renderSongs(); updatePayStatus(); renderDatosPanel();
 }
@@ -1120,6 +1385,7 @@ function render() {
   }
 
   drawChart(getZoomed(data));
+  if (showRSI) drawRSI(getZoomed(data));
   updateScrollbar();
   buildSupportRow();
   // Update infobar with latest data point after render
@@ -2808,7 +3074,9 @@ function setPeriod(days, btn) {
   // Update RES legend label for new period
   const resLbl = document.getElementById("res-leg-lbl");
   if (resLbl) resLbl.textContent = periodResLabel();
-  render(); renderHistory();
+  render();
+  if (showRSI) { const d=getFiltered(); drawRSI(getZoomed(d)); }
+  renderHistory();
 }
 
 function showBTab(name, btn) {
@@ -2827,7 +3095,7 @@ function showToast(msg) {
   setTimeout(()=>t.classList.remove("show"),2500);
 }
 
-window.addEventListener("resize",()=>{ const d=getFiltered(); drawChart(d); });
+window.addEventListener("resize",()=>{ const d=getFiltered(); drawChart(d); if(showRSI) drawRSI(d); });
 setupTooltip();
 setupScrollbar();
 load();

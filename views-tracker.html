@@ -123,8 +123,31 @@ canvas#chart {
 .tt-date { font-size:10px; color:var(--muted); }
 .tt-val  { font-size:13px; font-weight:900; }
 .tt-earn { font-size:10px; color:var(--green); font-weight:700; }
-.crosshair { position:absolute; top:8px; bottom:6px; width:1px; background:rgba(245,197,24,0.45); pointer-events:none; display:none; box-shadow:0 0 8px rgba(245,197,24,0.3); }
-.chart-dot { position:absolute; width:8px; height:8px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 8px currentColor, 0 0 16px currentColor; z-index:10; }
+.crosshair { position:absolute; top:8px; bottom:6px; width:1px; background:rgba(245,197,24,0.3); pointer-events:none; display:none; }
+.chart-dot { position:absolute; width:9px; height:9px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 10px currentColor; z-index:10; }
+/* FLOATING TOOLTIP — replaced by infobar, kept hidden */
+.tooltip { display:none !important; }
+/* CHART INFOBAR — fixed info row above canvas */
+.chart-infobar {
+  display:flex; align-items:center; gap:10px;
+  padding:7px 14px; margin:0 16px 6px;
+  background:var(--panel); border-radius:10px;
+  border:1px solid var(--border); min-height:36px;
+  transition:all 0.15s;
+}
+.cib-date { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); flex-shrink:0; }
+.cib-val  { font-family:'Space Mono',monospace; font-size:17px; font-weight:900; }
+.cib-chg  { font-size:11px; font-weight:700; }
+.cib-earn { font-size:10px; color:var(--green); font-weight:700; margin-left:auto; flex-shrink:0; }
+.cib-placeholder { font-size:11px; color:var(--muted); }
+/* SMA LEGEND — HTML element below scrollbar */
+.sma-legend {
+  display:flex; align-items:center; gap:12px;
+  padding:4px 16px 2px; flex-wrap:wrap;
+}
+.sma-leg-item { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--muted); font-weight:700; }
+.sma-leg-line { height:2px; border-radius:1px; }
+.sma-leg-dot  { width:8px; height:8px; border-radius:50%; border:1.5px solid #fff; }
 /* SUPPORT LINES TOGGLE */
 .support-row { display:flex; align-items:center; gap:5px; overflow-x:auto; padding:6px 16px 4px; scrollbar-width:none; position:relative; z-index:1; }
 .sline-lbl { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; white-space:nowrap; flex-shrink:0; }
@@ -440,8 +463,17 @@ canvas#chart {
 <div class="metric-row" id="metric-row"></div>
 <div class="toggle-row" id="toggle-row" style="display:none"></div>
 
+<!-- Chart info bar — replaces floating tooltip -->
+<div class="chart-infobar" id="chart-infobar">
+  <span class="cib-date" id="cib-date"></span>
+  <span class="cib-val"  id="cib-val"></span>
+  <span class="cib-chg"  id="cib-chg"></span>
+  <span class="cib-earn" id="cib-earn"></span>
+  <span class="cib-placeholder" id="cib-ph" style="color:var(--muted);font-size:11px;margin:0 auto">Toca o desliza para explorar</span>
+</div>
+
 <div class="chart-section">
-  <canvas id="chart" height="180"></canvas>
+  <canvas id="chart" height="220"></canvas>
   <div class="crosshair" id="crosshair"></div>
   <div class="chart-dot" id="chart-dot"></div>
   <div class="tooltip" id="tooltip">
@@ -455,6 +487,40 @@ canvas#chart {
 <div class="chart-scrollbar" id="chart-scrollbar" style="display:none">
   <div class="chart-scroll-track" id="scroll-track">
     <div class="chart-scroll-thumb" id="scroll-thumb"></div>
+  </div>
+</div>
+
+<!-- SMA Legend — fuera del canvas -->
+<div class="sma-legend" id="sma-legend" style="display:none">
+  <div class="sma-leg-item" id="sma-fast-leg">
+    <div class="sma-leg-line" style="width:18px;background:#4fc3f7"></div>
+    <span id="sma-fast-lbl">SMA7</span>
+  </div>
+  <div class="sma-leg-item" id="sma-slow-leg" style="display:none">
+    <div class="sma-leg-line" style="width:10px;background:#ffa726"></div>
+    <div class="sma-leg-line" style="width:5px;background:#ffa726"></div>
+    <span id="sma-slow-lbl">SMA28</span>
+  </div>
+  <div class="sma-leg-item">
+    <div class="sma-leg-dot" style="background:#00F5A0;border-color:#00F5A0"></div>
+    <span style="color:#00F5A0">Alcista</span>
+  </div>
+  <div class="sma-leg-item">
+    <div class="sma-leg-dot" style="background:#ff4d4d;border-color:#ff4d4d"></div>
+    <span style="color:#ff4d4d">Bajista</span>
+  </div>
+  <div class="sma-leg-item" id="res-leg" style="display:none">
+    <div class="sma-leg-line" style="width:18px;background:#FF9F43;height:2px"></div>
+    <span id="res-leg-lbl" style="color:#FF9F43">RES 1A</span>
+  </div>
+  <div class="sma-leg-item" id="fib-leg" style="display:none">
+    <div style="display:flex;gap:2px;align-items:center">
+      <div class="sma-leg-line" style="width:6px;background:#4fc3f7;height:1px"></div>
+      <div class="sma-leg-line" style="width:6px;background:#FFB830;height:2px"></div>
+      <div class="sma-leg-line" style="width:6px;background:#FF8C42;height:1px"></div>
+    </div>
+    <span style="color:#E2C27D">FIB φ</span>
+    <span style="color:var(--muted);font-size:9px">0–100% + ext</span>
   </div>
 </div>
 
@@ -614,16 +680,77 @@ let activePlats   = new Set(); // which platforms are visible in Todo mode
 let zoomStart=0, zoomEnd=Infinity;
 function zoomReset(){ zoomStart=0; zoomEnd=Infinity; updateScrollbar?.(); }
 function getZoomed(data){ const e=zoomEnd===Infinity?data.length-1:Math.min(zoomEnd,data.length-1); return data.slice(zoomStart,e+1); }
-let supportLines = { avg:true, max:true, min:false, trend:false };
+let supportLines = { avg:true, max:true, min:false, trend:false, resist:false, fib:false };
 let songsSortBy   = "streams";
 
 // ── SUPPORT LINES ─────────────────────────────────────────
 const SUPPORT_DEFS = [
-  { key:"avg",   label:"AVG",    color:"#FFB830", dash:true  },
-  { key:"max",   label:"MAX",    color:"#00F5A0", dash:true  },
-  { key:"min",   label:"MIN",    color:"#ff4d4d", dash:true  },
-  { key:"trend", label:"TREND",  color:"#b06afc", dash:false },
+  { key:"avg",    label:"AVG",    color:"#FFB830", dash:true  },
+  { key:"max",    label:"MAX",    color:"#00F5A0", dash:true  },
+  { key:"min",    label:"MIN",    color:"#ff4d4d", dash:true  },
+  { key:"trend",  label:"TREND",  color:"#b06afc", dash:false },
+  { key:"resist", label:"RES",    color:"#FF9F43", dash:false },
+  { key:"fib",    label:"FIB",    color:"#E2C27D", dash:false },
 ];
+
+// ── FIBONACCI LEVELS ──────────────────────────────────────
+const FIB_RETRACEMENTS = [
+  { r:0,     label:"0%",     color:"rgba(150,150,150,0.6)" },
+  { r:0.236, label:"23.6%",  color:"rgba(100,180,255,0.7)" },
+  { r:0.382, label:"38.2%",  color:"rgba(255,200,80,0.8)"  },
+  { r:0.5,   label:"50%",    color:"rgba(200,200,200,0.6)" },
+  { r:0.618, label:"61.8%",  color:"rgba(255,130,50,0.9)"  },  // Golden ratio
+  { r:0.786, label:"78.6%",  color:"rgba(200,100,255,0.7)" },
+  { r:1,     label:"100%",   color:"rgba(150,150,150,0.6)" },
+];
+const FIB_EXTENSIONS = [
+  { r:1.272, label:"127.2%", color:"rgba(80,220,160,0.7)"  },
+  { r:1.618, label:"161.8%", color:"rgba(80,220,160,0.9)"  },  // Golden ratio ext
+  { r:2.618, label:"261.8%", color:"rgba(80,220,160,0.7)"  },
+];
+
+function calcFibLevels(vals) {
+  if (vals.length < 4) return null;
+  const low  = Math.min(...vals);
+  const high = Math.max(...vals);
+  const range = high - low;
+  if (range === 0) return null;
+  const retracements = FIB_RETRACEMENTS.map(f => ({
+    ...f, value: high - f.r * range
+  }));
+  const extensions = FIB_EXTENSIONS.map(f => ({
+    ...f, value: low + f.r * range
+  }));
+  return { low, high, range, retracements, extensions };
+}
+
+// ── RESISTANCE CALCULATOR ─────────────────────────────────
+function calcResistance(vals) {
+  if (vals.length < 6) return null;
+  // Detect local maxima (peaks)
+  const peaks = [];
+  for (let i=1; i<vals.length-1; i++) {
+    if (vals[i] >= vals[i-1] && vals[i] >= vals[i+1]) peaks.push(vals[i]);
+  }
+  if (peaks.length < 2) return Math.max(...vals);
+  const globalMax = Math.max(...vals);
+  const tolerance = globalMax * 0.08; // 8% tolerance band
+  let bestLevel = 0, bestCount = 0;
+  peaks.forEach(p => {
+    const cluster = peaks.filter(q => Math.abs(q - p) <= tolerance);
+    if (cluster.length > bestCount || (cluster.length === bestCount && p > bestLevel)) {
+      bestCount = cluster.length;
+      bestLevel = cluster.reduce((a,b)=>a+b,0) / cluster.length;
+    }
+  });
+  return bestLevel > 0 ? bestLevel : globalMax;
+}
+
+// Period label for resistance
+function periodResLabel() {
+  const map = { 7:"RES 7D", 28:"RES 28D", 90:"RES 3M", 180:"RES 6M", 365:"RES 1A", 730:"RES 2A", 1095:"RES 3A" };
+  return map[currentPeriod] || "RES";
+}
 // Snapshot metrics: show last value as "total", not sum
 const SNAPSHOT_METRICS = ["followers","monthly"];
 
@@ -727,6 +854,18 @@ function buildSupportRow() {
     pill.onclick = () => {
       supportLines[def.key] = !supportLines[def.key];
       buildSupportRow();
+      // Update RES legend label when toggled
+      if (def.key === "resist") {
+        const resLeg = document.getElementById("res-leg");
+        const resLbl = document.getElementById("res-leg-lbl");
+        if (resLeg) resLeg.style.display = supportLines.resist ? "flex" : "none";
+        if (resLbl) resLbl.textContent = periodResLabel();
+      }
+      // Update FIB legend
+      if (def.key === "fib") {
+        const fibLeg = document.getElementById("fib-leg");
+        if (fibLeg) fibLeg.style.display = supportLines.fib ? "flex" : "none";
+      }
       const d = getFiltered(); drawChart(getZoomed(d)); updateScrollbar();
       if (tg) tg.HapticFeedback?.impactOccurred("light");
     };
@@ -983,13 +1122,37 @@ function render() {
   drawChart(getZoomed(data));
   updateScrollbar();
   buildSupportRow();
+  // Update infobar with latest data point after render
+  setTimeout(() => {
+    const canvas = document.getElementById("chart");
+    if (!canvas._data?.length) return;
+    const d = canvas._data; const v = canvas._vals;
+    const last = d[d.length-1]; const lastVal = v[v.length-1];
+    const m = canvas._m || METRICS[0];
+    const dt = new Date(last.date + "T00:00:00");
+    const ph = document.getElementById("cib-ph");
+    const cibDate = document.getElementById("cib-date");
+    const cibVal  = document.getElementById("cib-val");
+    const cibChg  = document.getElementById("cib-chg");
+    const cibEarn = document.getElementById("cib-earn");
+    if (ph) ph.style.display = "none";
+    if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+    if (cibVal)  { cibVal.textContent = fmtNum(lastVal) + " " + m.emoji; cibVal.style.color = m.color; }
+    if (cibChg && v.length > 1) {
+      const diff = lastVal - v[v.length-2];
+      const pct2 = v[v.length-2] > 0 ? Math.round((diff/v[v.length-2])*100) : 0;
+      cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
+      cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
+    }
+    if (cibEarn) cibEarn.textContent = "";
+  }, 50);
 }
 
 function drawChart(data) {
   const canvas=document.getElementById("chart");
   const ctx=canvas.getContext("2d");
   const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth*dpr; const H=180*dpr;
+  const W=canvas.offsetWidth*dpr; const H=220*dpr;
   canvas.width=W; canvas.height=H;
   ctx.fillStyle="#0d0f1a"; ctx.fillRect(0,0,W,H);
 
@@ -1157,27 +1320,21 @@ function drawChart(data) {
   if (smaFast) drawSMA(smaFast,"#4fc3f7");
   if (smaSlow) drawSMA(smaSlow,"#ffa726",true);
 
-  // ── LEYENDA ───────────────────────────────────────────────
-  if (smaFast) {
-    ctx.save(); ctx.font=`bold ${8*dpr}px -apple-system`; ctx.textAlign="left";
-    const ly=pad.t+10*dpr; let lx=pad.l+6*dpr;
-    const smaFastLabel=fastPeriod===3?"SMA3":"SMA7";
-    ctx.fillStyle="#4fc3f7";
-    ctx.fillRect(lx,ly-5*dpr,12*dpr,2*dpr);
-    ctx.fillText(smaFastLabel,lx+15*dpr,ly); lx+=45*dpr;
-    if (smaSlow) {
-      const smaSlowLabel=slowPeriod===28?"SMA28":"SMA7";
-      ctx.fillStyle="#ffa726";
-      ctx.fillRect(lx,ly-5*dpr,8*dpr,2*dpr);
-      ctx.fillRect(lx+10*dpr,ly-5*dpr,4*dpr,2*dpr);
-      ctx.fillText(smaSlowLabel,lx+17*dpr,ly); lx+=52*dpr;
+  // ── LEYENDA SMA → Update HTML element (not canvas) ──────
+  const smaLegEl = document.getElementById("sma-legend");
+  const smaFastLeg = document.getElementById("sma-fast-leg");
+  const smaSlowLeg = document.getElementById("sma-slow-leg");
+  const smaFastLbl = document.getElementById("sma-fast-lbl");
+  const smaSlowLbl = document.getElementById("sma-slow-lbl");
+  if (smaLegEl) {
+    if (smaFast) {
+      smaLegEl.style.display = "flex";
+      if (smaFastLbl) smaFastLbl.textContent = fastPeriod===3?"SMA3":"SMA7";
+      if (smaSlowLeg) smaSlowLeg.style.display = smaSlow ? "flex" : "none";
+      if (smaSlowLbl && smaSlow) smaSlowLbl.textContent = slowPeriod===28?"SMA28":"SMA7";
+    } else {
+      smaLegEl.style.display = "none";
     }
-    // Leyenda cruce
-    ctx.fillStyle="#00F5A0"; ctx.fillRect(lx,ly-5*dpr,6*dpr,6*dpr);
-    ctx.fillText("↑",lx+8*dpr,ly);
-    ctx.fillStyle="#ff4d4d"; ctx.fillRect(lx+16*dpr,ly-5*dpr,6*dpr,6*dpr);
-    ctx.fillText("↓",lx+24*dpr,ly);
-    ctx.restore();
   }
 
   // Dots normales si pocos datos y sin SMA
@@ -1263,26 +1420,27 @@ function drawChart(data) {
       const py = toY(y);
       if (py < pad.t - 2 || py > H - pad.b + 2) return;
       ctx.save();
-      ctx.strokeStyle = color; ctx.lineWidth = 1.2*dpr; ctx.globalAlpha = lineAlpha;
-      if (dashed) try{ctx.setLineDash([6*dpr,4*dpr]);}catch(e){}
+      ctx.strokeStyle = color; ctx.lineWidth = 1*dpr; ctx.globalAlpha = lineAlpha * 0.8;
+      if (dashed) try{ctx.setLineDash([4*dpr,4*dpr]);}catch(e){}
       ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W-pad.r, py); ctx.stroke();
       try{ctx.setLineDash([]);}catch(e){}
-      // Label on LEFT side with background pill for readability
+      // Label on RIGHT side — pill background for readability
       const ly = safeY(py);
       const txt = labelTxt + " " + fmtNum(labelVal);
-      ctx.font = `bold ${8*dpr}px -apple-system`;
-      ctx.textAlign = "left";
-      const tx = pad.l + 5*dpr;
+      ctx.font = `bold ${7.5*dpr}px -apple-system`;
+      ctx.textAlign = "right";
       const tw = ctx.measureText(txt).width;
+      const tx = W - pad.r - 4*dpr;
       // Background pill
-      ctx.globalAlpha = 0.7;
+      ctx.globalAlpha = 0.75;
       ctx.fillStyle = "#0d0f1a";
+      const pillX = tx - tw - 4*dpr;
       ctx.beginPath();
-      ctx.roundRect?.(tx-2*dpr, ly-7*dpr, tw+6*dpr, 10*dpr, 3*dpr)
-        || ctx.rect(tx-2*dpr, ly-7*dpr, tw+6*dpr, 10*dpr);
+      ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
+        || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
       ctx.fill();
       // Text
-      ctx.globalAlpha = 0.95;
+      ctx.globalAlpha = 0.9;
       ctx.fillStyle = color;
       ctx.fillText(txt, tx, ly);
       ctx.restore();
@@ -1291,6 +1449,48 @@ function drawChart(data) {
     if (supportLines.avg)   drawHline(avgV, "#FFB830", true,  "AVG", avgV);
     if (supportLines.max)   drawHline(maxV2,"#00F5A0", true,  "MAX", maxV2);
     if (supportLines.min)   drawHline(minV2,"#ff4d4d", true,  "MIN", minV2);
+
+    // ── RESISTENCIA TEMPORAL ──────────────────────────────
+    if (supportLines.resist) {
+      const resV = calcResistance(vals);
+      if (resV !== null) {
+        const resLbl = periodResLabel();
+        const pyR = toY(resV);
+        // Draw resistance as solid thicker line with zone fill
+        ctx.save();
+        // Zone fill (band ±3% above resistance)
+        const zoneTop = resV * 1.03;
+        if (toY(zoneTop) >= pad.t) {
+          const gZone = ctx.createLinearGradient(0, toY(zoneTop), 0, pyR);
+          gZone.addColorStop(0, "rgba(255,159,67,0)");
+          gZone.addColorStop(1, "rgba(255,159,67,0.12)");
+          ctx.fillStyle = gZone;
+          ctx.beginPath();
+          ctx.rect(pad.l, Math.max(pad.t, toY(zoneTop)), W-pad.l-pad.r, pyR - Math.max(pad.t, toY(zoneTop)));
+          ctx.fill();
+        }
+        // Main resistance line — solid, slightly thicker
+        ctx.strokeStyle = "#FF9F43"; ctx.lineWidth = 1.5*dpr; ctx.globalAlpha = 0.9;
+        ctx.setLineDash?.([]);
+        ctx.beginPath(); ctx.moveTo(pad.l, pyR); ctx.lineTo(W-pad.r, pyR); ctx.stroke();
+        // Label — right side with pill
+        const txt = resLbl + " " + fmtNum(resV);
+        ctx.font = `bold ${7.5*dpr}px -apple-system`;
+        ctx.textAlign = "right";
+        const tw = ctx.measureText(txt).width;
+        const tx = W - pad.r - 4*dpr;
+        const ly = safeY(pyR);
+        ctx.globalAlpha = 0.75; ctx.fillStyle = "#0d0f1a";
+        const pillX = tx - tw - 4*dpr;
+        ctx.beginPath();
+        ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
+          || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
+        ctx.fill();
+        ctx.globalAlpha = 1; ctx.fillStyle = "#FF9F43";
+        ctx.fillText(txt, tx, ly);
+        ctx.restore();
+      }
+    }
     if (supportLines.trend) {
       const ty0 = intercept;
       const ty1 = slope*(n-1)+intercept;
@@ -1317,7 +1517,127 @@ function drawChart(data) {
     }
   }
 
-  // Store point positions in CSS pixels for the dot indicator
+    // ── FIBONACCI ─────────────────────────────────────────
+    if (supportLines.fib) {
+      const fib = calcFibLevels(vals);
+      if (fib) {
+        ctx.save();
+        const allLevels = [...fib.retracements, ...fib.extensions];
+
+        // ── Golden pocket zone fill (38.2% → 61.8%) ────────
+        const gp1 = fib.retracements.find(f=>f.r===0.382);
+        const gp2 = fib.retracements.find(f=>f.r===0.618);
+        if (gp1 && gp2) {
+          const py1 = toY(gp1.value), py2 = toY(gp2.value);
+          const inView = Math.max(py1,py2) > pad.t && Math.min(py1,py2) < H-pad.b;
+          if (inView) {
+            ctx.globalAlpha = 0.07;
+            ctx.fillStyle = "#FFD700";
+            ctx.fillRect(pad.l, Math.min(py1,py2), W-pad.l-pad.r, Math.abs(py2-py1));
+          }
+        }
+
+        // ── 161.8% target zone fill (above 100%) ──────────
+        const ext618 = fib.extensions.find(f=>f.r===1.618);
+        const base100 = fib.retracements.find(f=>f.r===0);
+        if (ext618 && base100) {
+          const pyExt = toY(ext618.value), pyBase = toY(base100.value);
+          if (pyExt > pad.t) {
+            ctx.globalAlpha = 0.05;
+            ctx.fillStyle = "#00F5A0";
+            ctx.fillRect(pad.l, Math.max(pad.t, pyExt), W-pad.l-pad.r, Math.max(0, Math.min(pyBase, H-pad.b) - Math.max(pad.t, pyExt)));
+          }
+        }
+
+        // ── Draw lines + labels ────────────────────────────
+        // Skip 0% and 100% — they overlap with MAX/MIN
+        const drawLevels = allLevels.filter(lv => lv.r !== 0 && lv.r !== 1);
+
+        drawLevels.forEach(lv => {
+          const py = toY(lv.value);
+          if (py < pad.t - 2 || py > H - pad.b + 2) return;
+
+          const isGolden    = lv.r === 0.618 || lv.r === 1.618;
+          const isMid       = lv.r === 0.382 || lv.r === 0.5 || lv.r === 0.786 || lv.r === 1.272 || lv.r === 2.618;
+          const isTarget    = lv.r === 1.618;
+          const lineW       = isGolden ? 1.8*dpr : isMid ? 1*dpr : 0.7*dpr;
+          const lineAlphaF  = isGolden ? 0.85 : isMid ? 0.45 : 0.25;
+
+          // Line — target 161.8% dashed
+          ctx.globalAlpha  = lineAlphaF;
+          ctx.strokeStyle  = lv.color;
+          ctx.lineWidth    = lineW;
+          if (isTarget) { try{ctx.setLineDash([6*dpr,3*dpr]);}catch(e){} }
+          else          { try{ctx.setLineDash([]);}catch(e){} }
+          ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W-pad.r, py); ctx.stroke();
+          try{ctx.setLineDash([]);}catch(e){}
+
+          // φ dot on left for golden levels
+          if (isGolden) {
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle   = lv.color;
+            ctx.beginPath(); ctx.arc(pad.l + 5*dpr, py, 3.5*dpr, 0, Math.PI*2); ctx.fill();
+          }
+
+          // RIGHT label — only the percentage, short
+          const ly   = safeY(py);
+          const pctTxt = lv.label + (isGolden ? " φ" : "");
+          ctx.font    = isGolden ? `bold ${8*dpr}px -apple-system` : `${7*dpr}px -apple-system`;
+          ctx.textAlign = "right";
+          const tw    = ctx.measureText(pctTxt).width;
+          const tx    = W - pad.r - 4*dpr;
+
+          // Pill background — right
+          ctx.globalAlpha = isGolden ? 0.88 : 0.6;
+          ctx.fillStyle   = "#0d0f1a";
+          const pillX = tx - tw - 4*dpr;
+          ctx.beginPath();
+          ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
+            || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
+          ctx.fill();
+
+          // Percentage text — right
+          ctx.globalAlpha = isGolden ? 1 : isMid ? 0.7 : 0.45;
+          ctx.fillStyle   = lv.color;
+          ctx.fillText(pctTxt, tx, ly);
+
+          // LEFT label — value in oyentes/streams, only for golden + mid levels
+          if (isGolden || isMid) {
+            const valTxt = fmtNum(lv.value);
+            ctx.font = isGolden ? `bold ${7.5*dpr}px -apple-system` : `${7*dpr}px -apple-system`;
+            ctx.textAlign = "left";
+            const vtw = ctx.measureText(valTxt).width;
+            const vtx = pad.l + (isGolden ? 14*dpr : 6*dpr);
+
+            // Pill background — left
+            ctx.globalAlpha = isGolden ? 0.8 : 0.5;
+            ctx.fillStyle   = "#0d0f1a";
+            ctx.beginPath();
+            ctx.roundRect?.(vtx-2*dpr, ly-7*dpr, vtw+6*dpr, 10*dpr, 3*dpr)
+              || ctx.rect(vtx-2*dpr, ly-7*dpr, vtw+6*dpr, 10*dpr);
+            ctx.fill();
+
+            ctx.globalAlpha = isGolden ? 0.9 : 0.55;
+            ctx.fillStyle   = isGolden ? lv.color : "rgba(200,200,220,0.8)";
+            ctx.fillText(valTxt, vtx, ly);
+          }
+
+          // TARGET label for 161.8%
+          if (isTarget) {
+            const tgtTxt = "🎯 OBJETIVO";
+            ctx.font = `bold ${7.5*dpr}px -apple-system`;
+            ctx.textAlign = "left";
+            const ttx = W/2 - ctx.measureText(tgtTxt).width/2;
+            ctx.globalAlpha = 0.7; ctx.fillStyle = "#0d0f1a";
+            ctx.fillRect(ttx-4*dpr, ly-7*dpr, ctx.measureText(tgtTxt).width+10*dpr, 10*dpr);
+            ctx.globalAlpha = 0.85; ctx.fillStyle = lv.color;
+            ctx.fillText(tgtTxt, ttx, ly);
+          }
+        });
+
+        ctx.restore();
+      }
+    }
   canvas._pts=data.map((_,i)=>({
     x: toX(i)/dpr,
     y: toY(vals[i])/dpr
@@ -1430,10 +1750,28 @@ function setupTooltip() {
     const plat = PLATFORMS.find(p => p.id===selPlatform);
     const rate = currentMetric==="streams" && plat ? plat.rate : 0;
     const dt   = new Date(entry.date + "T00:00:00");
-    document.getElementById("tt-date").textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short",year:"2-digit"});
-    document.getElementById("tt-val").textContent  = fmtNum(val) + " " + m.emoji;
-    document.getElementById("tt-val").style.color  = m.color;
-    document.getElementById("tt-earn").textContent = rate > 0 ? `💰 ${fmtMoney(val*rate)}` : "";
+
+    // Update infobar
+    const ph = document.getElementById("cib-ph");
+    const cibDate = document.getElementById("cib-date");
+    const cibVal  = document.getElementById("cib-val");
+    const cibChg  = document.getElementById("cib-chg");
+    const cibEarn = document.getElementById("cib-earn");
+    if (ph) ph.style.display = "none";
+    if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+    if (cibVal)  { cibVal.textContent = fmtNum(val) + " " + m.emoji; cibVal.style.color = m.color; }
+    // Change vs previous
+    if (cibChg) {
+      if (idx > 0 && v[idx-1]) {
+        const diff = val - v[idx-1];
+        const pct2 = v[idx-1] > 0 ? Math.round((diff/v[idx-1])*100) : 0;
+        cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
+        cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
+      } else { cibChg.textContent = ""; }
+    }
+    if (cibEarn) cibEarn.textContent = rate > 0 ? "💰 " + fmtMoney(val*rate) : "";
+
+    // Crosshair + dot
     const xSec = clientX - secRect.left;
     crosshair.style.left = xSec + "px"; crosshair.style.display = "block";
     const pts = canvas._pts;
@@ -1444,19 +1782,34 @@ function setupTooltip() {
       dot.style.background = m.color;
       dot.style.display    = "block";
     }
-    const ttW = 140;
-    const dotY = pts && pts[idx] ? (rect.top - secRect.top + pts[idx].y) : 30;
-    tooltip.style.left    = Math.max(0, Math.min(secRect.width - ttW, xSec - ttW/2)) + "px";
-    tooltip.style.top     = Math.max(4, dotY - 38) + "px";
-    tooltip.style.display = "flex";
     if (tg) tg.HapticFeedback?.selectionChanged();
   }
   function hideTooltip() {
     setTimeout(() => {
-      tooltip.style.display = "none";
       crosshair.style.display = "none";
       if (dot) dot.style.display = "none";
-    }, 1800);
+      // Restore infobar to latest data
+      const d = canvas._data; const v = canvas._vals;
+      const ph = document.getElementById("cib-ph");
+      if (!d?.length) { if (ph) ph.style.display = ""; return; }
+      const last = d[d.length-1]; const lastVal = v[v.length-1];
+      const m = canvas._m || METRICS[0];
+      const dt = new Date(last.date + "T00:00:00");
+      const cibDate = document.getElementById("cib-date");
+      const cibVal  = document.getElementById("cib-val");
+      const cibChg  = document.getElementById("cib-chg");
+      const cibEarn = document.getElementById("cib-earn");
+      if (ph) ph.style.display = "none";
+      if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+      if (cibVal)  { cibVal.textContent = fmtNum(lastVal) + " " + m.emoji; cibVal.style.color = m.color; }
+      if (cibChg && v.length > 1) {
+        const diff = lastVal - v[v.length-2];
+        const pct2 = v[v.length-2] > 0 ? Math.round((diff/v[v.length-2])*100) : 0;
+        cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
+        cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
+      }
+      if (cibEarn) cibEarn.textContent = "";
+    }, 800);
   }
 
   // ── Touch state ──
@@ -2452,6 +2805,9 @@ function clearPlatform(platId) {
 function setPeriod(days, btn) {
   currentPeriod=days; zoomReset();
   document.querySelectorAll(".ptab").forEach(t=>t.classList.remove("active")); btn.classList.add("active");
+  // Update RES legend label for new period
+  const resLbl = document.getElementById("res-leg-lbl");
+  if (resLbl) resLbl.textContent = periodResLabel();
   render(); renderHistory();
 }
 

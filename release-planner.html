@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Release Planner · MusicCodexBox</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --mint:#00F5A0;--pink:#FF2D78;--purple:#7C3AFF;--gold:#FFB830;
+      --bg:#030308;--s:#0D0D1A;--s2:#111120;--border:rgba(255,255,255,.06);
+      --muted:#7A7A9A;--dim:#2A2A44;--text:#E0E0F0;
+    }
+    html,body{background:var(--bg);min-height:100vh;font-family:'Syne',sans-serif;color:var(--text);overflow-x:hidden;}
+    ::-webkit-scrollbar{width:0;}
+    #hdr{position:sticky;top:0;z-index:100;background:rgba(3,3,8,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:14px 18px;}
+    .hdr-row{display:flex;align-items:center;gap:10px;}
+    #backBtn{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:var(--s);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .hdr-tag{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.25em;color:var(--gold);}
+    .hdr-title{font-size:17px;font-weight:800;color:#fff;}
+    #navTabs{display:flex;gap:6px;padding:12px 18px 0;overflow-x:auto;scrollbar-width:none;}
+    #navTabs::-webkit-scrollbar{display:none;}
+    .ntab{flex-shrink:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;border:1px solid var(--border);background:var(--s);color:var(--muted);transition:all .2s;}
+    .ntab.active{background:rgba(255,184,48,.1);border-color:rgba(255,184,48,.3);color:var(--gold);}
+    #main{padding:14px 18px 80px;}
+    .card{background:var(--s);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+    .sec-lbl{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.22em;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+    .sec-lbl::before{content:'';width:14px;height:1px;background:var(--gold);}
+    .lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:block;}
+    .inp{width:100%;padding:9px 12px;border-radius:10px;background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;margin-bottom:8px;transition:border-color .2s;}
+    .inp:focus{border-color:rgba(255,184,48,.4);}
+    select.inp option{background:var(--s2);}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border:none;border-radius:12px;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.1em;cursor:pointer;transition:all .15s;}
+    .btn:active{transform:scale(.96);}
+    .btn-gold{background:var(--gold);color:#000;}
+    .btn-ghost{background:var(--s2);border:1px solid var(--border);color:var(--muted);}
+    .divrow{display:flex;align-items:center;gap:8px;margin:8px 0 6px;}
+    .divline{flex:1;height:1px;background:var(--border);}
+    .divtxt{font-family:'Space Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.12em;}
+
+    /* YEAR HEADER */
+    .year-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .year-arrow{width:32px;height:32px;border-radius:8px;background:var(--s);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .year-label{font-size:22px;font-weight:800;color:var(--gold);font-family:"Space Mono",monospace;}
+
+    /* YEAR STATS */
+
+
+    /* MONTH CARDS */
+    .month-card{background:var(--s);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:6px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+    .month-card:active{transform:scale(.98);}
+    .month-card.expanded{border-color:rgba(255,184,48,.3);}
+    .mc-header{display:flex;justify-content:space-between;align-items:center;}
+    .mc-name{font-size:14px;font-weight:800;color:#fff;}
+    .mc-count{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:#B0B0C8;}
+    .mc-dots{display:flex;gap:5px;align-items:center;margin-top:0;}
+    .mc-dot{width:7px;height:7px;border-radius:50%;background:var(--mint);}
+    .mc-dot.video{background:var(--pink);}
+    .mc-weeks{display:none;}
+    .mc-detail{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
+    .mc-detail.open{display:block;}
+
+    /* WEEK ROW in detail */
+    .wr{padding:8px 10px;background:var(--s2);border-radius:10px;margin-bottom:5px;border-left:2px solid var(--mint);}
+    .wr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+    .wr-title{font-size:12px;font-weight:700;color:#fff;}
+    .wr-date{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--gold);}
+    .wr-events{display:flex;flex-direction:column;gap:2px;}
+    .wre{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);}
+    .wre-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+    .wre-time{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:var(--gold);margin-left:auto;}
+
+    /* AGENDA */
+    .ag-month{margin-bottom:10px;}
+    .ag-month-hdr{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:var(--gold);letter-spacing:.15em;padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+    .ag-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border-radius:8px;margin-bottom:3px;border-left:2px solid transparent;}
+    .ag-item.release{border-left-color:var(--mint);}
+    .ag-item.teaser{border-left-color:var(--gold);}
+    .ag-item.reel{border-left-color:#CC44FF;}
+    .ag-item.video{border-left-color:var(--pink);}
+    .ag-item.discover{border-left-color:var(--purple);}
+    .ag-date{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;color:#B0B0C8;width:44px;flex-shrink:0;}
+    .ag-body{flex:1;min-width:0;}
+    .ag-title{font-size:11px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ag-time{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;color:var(--gold);}
+
+    /* TRACKS EDITOR */
+    .track-week{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--s2);border-radius:8px;margin-bottom:3px;}
+    .tw-num{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;color:var(--purple);width:28px;flex-shrink:0;}
+    .tw-date{font-family:'Space Mono',monospace;font-size:8px;font-weight:700;color:var(--mint);width:64px;flex-shrink:0;}
+    .tw-inp{flex:1;background:transparent;border:none;border-bottom:1px solid var(--dim);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;outline:none;padding:2px 0;}
+    .tw-inp:focus{border-bottom-color:var(--gold);}
+    .tw-inp::placeholder{color:var(--dim);}
+    .tw-vid{font-size:9px;color:var(--pink);flex-shrink:0;}
+
+    /* MARKET */
+    .mkt-box{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:8px;margin-bottom:4px;border-left:2px solid var(--border);}
+    .mkt-name{font-size:12px;font-weight:700;color:#fff;flex:1;}
+    .mkt-time{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;text-align:right;}
+    .mkt-sub{display:none;}
+
+    /* FILTER PILLS */
+    .filter-wrap{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;}
+    .filter-wrap::-webkit-scrollbar{display:none;}
+    .fpill{flex-shrink:0;padding:5px 10px;border-radius:20px;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;border:1px solid var(--border);background:var(--s2);color:var(--muted);cursor:pointer;transition:all .2s;}
+    .fpill.sel{background:rgba(255,184,48,.1);border-color:rgba(255,184,48,.3);color:var(--gold);}
+  </style>
+</head>
+<body>
+<div id="hdr">
+  <div class="hdr-row">
+    <div id="backBtn" onclick="goBack()">←</div>
+    <div style="flex:1;text-align:center;">
+      <div class="hdr-tag">⊕ DISTRIBUCIÓN · FREE</div>
+      <div class="hdr-title">Release Planner</div>
+    </div>
+    <div id="hdrYear" style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--gold);"></div>
+  </div>
+</div>
+
+<div id="navTabs">
+  <div class="ntab active" data-t="year"    onclick="switchTab('year')">AÑO</div>
+  <div class="ntab"        data-t="agenda"  onclick="switchTab('agenda')">AGENDA</div>
+  <div class="ntab"        data-t="tracks"  onclick="switchTab('tracks')">TEMAS</div>
+  <div class="ntab"        data-t="markets" onclick="switchTab('markets')">MERCADOS</div>
+</div>
+
+<div id="main">
+
+  <!-- YEAR TAB -->
+  <div id="tab-year">
+    <div class="year-nav">
+      <div class="year-arrow" onclick="changeYear(-1)">‹</div>
+      <div class="year-label" id="yearLabel">2026</div>
+      <div class="year-arrow" onclick="changeYear(1)">›</div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:14px;font-family:'Space Mono',monospace;">
+      <div style="flex:1;text-align:center;"><span id="ys-releases" style="font-size:22px;font-weight:700;color:var(--mint);">48</span><div style="font-size:7px;color:var(--muted);margin-top:2px;letter-spacing:.1em;">RELEASES</div></div>
+      <div style="flex:1;text-align:center;"><span id="ys-videos" style="font-size:22px;font-weight:700;color:var(--pink);">24</span><div style="font-size:7px;color:var(--muted);margin-top:2px;letter-spacing:.1em;">VIDEOS</div></div>
+      <div style="flex:1;text-align:center;"><span id="ys-teasers" style="font-size:22px;font-weight:700;color:var(--gold);">48</span><div style="font-size:7px;color:var(--muted);margin-top:2px;letter-spacing:.1em;">TEASERS</div></div>
+      <div style="flex:1;text-align:center;"><span id="ys-weeks" style="font-size:22px;font-weight:700;color:var(--purple);">52</span><div style="font-size:7px;color:var(--muted);margin-top:2px;letter-spacing:.1em;">SEMANAS</div></div>
+    </div>
+    <div id="monthsList"></div>
+  </div>
+
+  <!-- AGENDA TAB -->
+  <div id="tab-agenda" style="display:none;">
+    <div class="filter-wrap" id="filterWrap">
+      <div class="fpill sel" data-f="all"      onclick="setFilter(this,'all')">TODO</div>
+      <div class="fpill"     data-f="release"  onclick="setFilter(this,'release')">RELEASES</div>
+      <div class="fpill"     data-f="teaser"   onclick="setFilter(this,'teaser')">TEASERS</div>
+      <div class="fpill"     data-f="reel"     onclick="setFilter(this,'reel')">REELS</div>
+      <div class="fpill"     data-f="video"    onclick="setFilter(this,'video')">VIDEOS</div>
+      <div class="fpill"     data-f="discover" onclick="setFilter(this,'discover')">DISCOVER</div>
+    </div>
+    <div id="agendaList"></div>
+  </div>
+
+  <!-- TRACKS TAB -->
+  <div id="tab-tracks" style="display:none;">
+    <div style="background:rgba(255,184,48,.05);border:1px solid rgba(255,184,48,.15);border-radius:12px;padding:12px;margin-bottom:12px;">
+      <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--gold);letter-spacing:.15em;margin-bottom:6px;">◈ INSTRUCCIONES</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;">Edita el nombre de cada tema directamente. El icono 🎬 indica que esa semana también hay Premiere en YouTube. Los cambios se guardan automáticamente.</div>
+    </div>
+    <div id="tracksList"></div>
+  </div>
+
+  <!-- MARKETS TAB -->
+  <div id="tab-markets" style="display:none;">
+    <div class="card">
+      <div class="sec-lbl">Ventanas de tráfico</div>
+      <div class="mkt-box" style="border-left-color:#4fc3f7;">
+        <div class="mkt-name">🇪🇸 España / Europa</div>
+        <div class="mkt-time" style="color:#4fc3f7;">20:00–22:00</div>
+      </div>
+      <div class="mkt-box" style="border-left-color:var(--mint);">
+        <div class="mkt-name">🌎 Latinoamérica</div>
+        <div class="mkt-time" style="color:var(--mint);">01:00–04:00</div>
+      </div>
+      <div class="mkt-box" style="border-left-color:#CC44FF;">
+        <div class="mkt-name">🇺🇸 USA Latino</div>
+        <div class="mkt-time" style="color:#CC44FF;">03:00–06:00</div>
+      </div>
+      <div class="mkt-box" style="border-left-color:var(--gold);background:rgba(255,184,48,.04);">
+        <div class="mkt-name">⭐ Sweet spot ambos</div>
+        <div class="mkt-time" style="color:var(--gold);">21:00–23:00</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-lbl">Horarios óptimos por contenido</div>
+      <div id="contentSchedule"></div>
+    </div>
+    <div class="card">
+      <div class="sec-lbl">Lógica algorítmica</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.7;">
+        <p style="margin-bottom:8px;"><strong style="color:#fff;">Viernes 00:00 UTC</strong> — Spotify actualiza New Music Friday globalmente. Subir a DistroKid el martes anterior.</p>
+        <p style="margin-bottom:8px;"><strong style="color:#fff;">Martes (teaser)</strong> — 3 días antes del release. Calienta el algoritmo antes del drop.</p>
+        <p style="margin-bottom:8px;"><strong style="color:#fff;">Jueves (reel + premiere)</strong> — 24h antes. Máximo hype pre-lanzamiento.</p>
+        <p><strong style="color:#fff;">Lunes post-release</strong> — Spotify analiza datos para Discover Weekly. Cada save cuenta doble.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const tg=window.Telegram?.WebApp;
+  if(tg){tg.ready();tg.expand();}
+
+  const STORE='av_planner_year_v1';
+  let activeYear=2026;
+  let tracks={};  // key: "YYYY-WW" → track name
+  let agendaFilter='all';
+
+  // Load from storage
+  try{
+    const s=localStorage.getItem(STORE);
+    if(s){const d=JSON.parse(s);activeYear=d.year||2026;tracks=d.tracks||{};}
+  }catch(e){}
+
+  const save=()=>{
+    localStorage.setItem(STORE,JSON.stringify({year:activeYear,tracks}));
+  };
+
+  const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const MONTHS_SHORT=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
+  const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
+  const fmt=d=>d.toISOString().split('T')[0];
+  const fmtShort=d=>d.toLocaleDateString('es-ES',{day:'numeric',month:'short'}).toUpperCase();
+  const fmtFull=d=>d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+
+  // ── GENERATE ALL FRIDAYS OF YEAR ──────────────────────────
+  function getAllFridays(year){
+    const fridays=[];
+    const d=new Date(year,0,1);
+    while(d.getDay()!==5) d.setDate(d.getDate()+1);
+    while(d.getFullYear()===year){
+      fridays.push(new Date(d));
+      d.setDate(d.getDate()+7);
+    }
+    return fridays;
+  }
+
+  function getTrackKey(friday,idx){
+    return `${friday.getFullYear()}-W${String(idx+1).padStart(2,'0')}`;
+  }
+
+  function getTrackName(friday,idx){
+    const key=getTrackKey(friday,idx);
+    return tracks[key]||`Tema ${idx+1}`;
+  }
+
+  function isVideoWeek(idx){ return idx%2===1; } // weeks 2,4,6,8... (0-indexed: 1,3,5,7)
+
+  // ── GENERATE ALL EVENTS FOR YEAR ──────────────────────────
+  function generateYearEvents(year){
+    const fridays=getAllFridays(year);
+    const events=[];
+
+    fridays.forEach((friday,i)=>{
+      const track=getTrackName(friday,i);
+      const tuesday=addDays(friday,-3);
+      const thursday=addDays(friday,-1);
+      const monday=addDays(friday,3);
+      const hasVideo=isVideoWeek(i);
+
+      events.push({type:'teaser',  date:tuesday,  title:`Teaser TikTok — ${track}`, time:'21:00–22:30',  weekIdx:i});
+      events.push({type:'reel',    date:thursday, title:`Reel + Shorts — ${track}`,  time:'20:00–22:00', weekIdx:i});
+      if(hasVideo)
+        events.push({type:'video', date:thursday, title:`Premiere YouTube — ${track}`, time:'20:00 Madrid', weekIdx:i});
+      events.push({type:'release', date:friday,   title:`RELEASE — ${track}`,         time:'00:00 UTC',   weekIdx:i});
+      events.push({type:'discover',date:monday,   title:`Discover Weekly — ${track}`, time:'Todo el día', weekIdx:i});
+    });
+
+    return events.sort((a,b)=>a.date-b.date);
+  }
+
+  // ── RENDER YEAR TAB ───────────────────────────────────────
+  function renderYear(){
+    document.getElementById('yearLabel').textContent=activeYear;
+    document.getElementById('hdrYear').textContent=activeYear;
+
+    const fridays=getAllFridays(activeYear);
+    const videoWeeks=fridays.filter((_,i)=>isVideoWeek(i)).length;
+    document.getElementById('ys-releases').textContent=fridays.length;
+    document.getElementById('ys-videos').textContent=videoWeeks;
+    document.getElementById('ys-teasers').textContent=fridays.length;
+    document.getElementById('ys-weeks').textContent=fridays.length;
+
+    // Group by month
+    const byMonth={};
+    fridays.forEach((f,i)=>{
+      const m=f.getMonth();
+      if(!byMonth[m]) byMonth[m]=[];
+      byMonth[m].push({friday:f,idx:i});
+    });
+
+    let html='';
+    for(let m=0;m<12;m++){
+      const mFridays=byMonth[m]||[];
+      const videoCount=mFridays.filter(({idx})=>isVideoWeek(idx)).length;
+
+      const dots=mFridays.map(({friday,idx})=>{
+        const hasVid=isVideoWeek(idx);
+        return `<div class="mc-dot ${hasVid?'video':''}" title="${getTrackName(friday,idx)}"></div>`;
+      }).join('');
+
+      const nextFriday=mFridays[0]?fmtShort(mFridays[0].friday):'';
+
+      html+=`<div class="month-card" id="mc-${m}" onclick="toggleMonth(${m})">
+        <div class="mc-header">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="mc-name">${MONTHS[m]}</div>
+            <div class="mc-dots">${dots}</div>
+          </div>
+          <div class="mc-count">${mFridays.length}R · ${videoCount}V · ${nextFriday}</div>
+        </div>
+        <div class="mc-detail" id="mcd-${m}"></div>
+      </div>`;
+    }
+
+    document.getElementById('monthsList').innerHTML=html;
+  }
+
+  window.toggleMonth=m=>{
+    const card=document.getElementById(`mc-${m}`);
+    const detail=document.getElementById(`mcd-${m}`);
+    const isOpen=detail.classList.contains('open');
+
+    // Close all
+    document.querySelectorAll('.mc-detail').forEach(d=>d.classList.remove('open'));
+    document.querySelectorAll('.month-card').forEach(c=>c.classList.remove('expanded'));
+
+    if(!isOpen){
+      card.classList.add('expanded');
+      detail.classList.add('open');
+      renderMonthDetail(m,detail);
+    }
+  };
+
+  function renderMonthDetail(m,el){
+    const fridays=getAllFridays(activeYear).filter((_,i)=>true);
+    const mFridays=fridays.map((f,i)=>({f,i})).filter(({f})=>f.getMonth()===m);
+
+    el.innerHTML=mFridays.map(({f:friday,i:idx})=>{
+      const track=getTrackName(friday,idx);
+      const tuesday=addDays(friday,-3);
+      const thursday=addDays(friday,-1);
+      const monday=addDays(friday,3);
+      const hasVideo=isVideoWeek(idx);
+
+      return `<div class="wr">
+        <div class="wr-top">
+          <div class="wr-title">🔥 ${track}</div>
+          <div class="wr-date">Semana ${idx+1}</div>
+        </div>
+        <div class="wr-events">
+          <div class="wre"><div class="wre-dot" style="background:var(--gold);"></div>${fmtFull(tuesday)} — TikTok Teaser<span class="wre-time">21:00</span></div>
+          <div class="wre"><div class="wre-dot" style="background:#CC44FF;"></div>${fmtFull(thursday)} — Reel + Shorts<span class="wre-time">20:00</span></div>
+          ${hasVideo?`<div class="wre"><div class="wre-dot" style="background:var(--pink);"></div>${fmtFull(thursday)} — Premiere 🎬<span class="wre-time">20:00</span></div>`:''}
+          <div class="wre"><div class="wre-dot" style="background:var(--mint);"></div>${fmtFull(friday)} — RELEASE<span class="wre-time">00:00 UTC</span></div>
+          <div class="wre"><div class="wre-dot" style="background:var(--purple);"></div>${fmtFull(monday)} — Discover Weekly<span class="wre-time">todo el día</span></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── RENDER AGENDA ─────────────────────────────────────────
+  function renderAgenda(){
+    const events=generateYearEvents(activeYear);
+    const filtered=agendaFilter==='all'?events:events.filter(e=>e.type===agendaFilter);
+
+    // Group by month
+    const byMonth={};
+    filtered.forEach(ev=>{
+      const m=ev.date.getMonth();
+      if(!byMonth[m]) byMonth[m]=[];
+      byMonth[m].push(ev);
+    });
+
+    const EV_LABELS={release:'🔥 RELEASE',teaser:'⚡ TEASER TK',reel:'🎬 REEL',video:'📺 PREMIERE',discover:'🎯 DISCOVER'};
+    const EV_TIMES={release:'00:00 UTC',teaser:'21:00–22:30 Madrid',reel:'20:00–22:00 Madrid',video:'20:00 Madrid',discover:'Todo el día'};
+
+    let html='';
+    for(let m=0;m<12;m++){
+      const mEvs=byMonth[m];
+      if(!mEvs||!mEvs.length) continue;
+      html+=`<div class="ag-month"><div class="ag-month-hdr">${MONTHS_SHORT[m]} ${activeYear}</div>`;
+      mEvs.forEach(ev=>{
+        const dow=ev.date.toLocaleDateString('es-ES',{weekday:'short',day:'numeric'}).toUpperCase();
+        const trackName=ev.title.split('—')[1]?.trim()||'';
+        html+=`<div class="ag-item ${ev.type}">
+          <div class="ag-date">${dow}</div>
+          <div class="ag-body">
+            <div class="ag-title">${EV_LABELS[ev.type]}${trackName?' · '+trackName:''}</div>
+          </div>
+          <div class="ag-time">${EV_TIMES[ev.type]}</div>
+        </div>`;
+      });
+      html+='</div>';
+    }
+
+    document.getElementById('agendaList').innerHTML=html||'<div style="text-align:center;padding:40px 0;font-family:Space Mono,monospace;font-size:10px;color:var(--dim);">Sin eventos para este filtro</div>';
+  }
+
+  window.setFilter=(el,f)=>{
+    agendaFilter=f;
+    document.querySelectorAll('.fpill').forEach(p=>p.classList.toggle('sel',p.dataset.f===f));
+    renderAgenda();
+  };
+
+  // ── RENDER TRACKS ─────────────────────────────────────────
+  function renderTracks(){
+    const fridays=getAllFridays(activeYear);
+    let html='';
+    let lastMonth=-1;
+
+    fridays.forEach((friday,i)=>{
+      const m=friday.getMonth();
+      if(m!==lastMonth){
+        if(lastMonth>=0) html+='</div>';
+        html+=`<div class="divrow"><div class="divline"></div><div class="divtxt">${MONTHS[m].toUpperCase()}</div><div class="divline"></div></div><div>`;
+        lastMonth=m;
+      }
+      const key=getTrackKey(friday,i);
+      const hasVid=isVideoWeek(i);
+      html+=`<div class="track-week">
+        <div class="tw-num">W${i+1}</div>
+        <div class="tw-date">${fmtShort(friday)}</div>
+        <input class="tw-inp" id="tw-${key}" placeholder="Tema ${i+1}" value="${tracks[key]||''}"
+          oninput="updateTrack('${key}',this.value)"/>
+        ${hasVid?'<div class="tw-vid">🎬</div>':''}
+      </div>`;
+    });
+    if(lastMonth>=0) html+='</div>';
+
+    document.getElementById('tracksList').innerHTML=html;
+  }
+
+  window.updateTrack=(key,val)=>{
+    if(val.trim()) tracks[key]=val.trim();
+    else delete tracks[key];
+    save();
+  };
+
+  // ── RENDER MARKETS ────────────────────────────────────────
+  function renderContentSchedule(){
+    const items=[
+      {icon:'🔥',type:'RELEASE',   time:'Viernes 00:00 UTC',      why:'New Music Friday global'},
+      {icon:'⚡',type:'TEASER TK', time:'Martes 21:00–22:30',     why:'Sweet spot Europa + LatAm'},
+      {icon:'🎬',type:'REEL',      time:'Jueves 20:00–22:00',     why:'Prime time pre-release'},
+      {icon:'📺',type:'PREMIERE',  time:'Jueves 20:00 Madrid',    why:'Sem. 2 y 4 — máxima audiencia'},
+      {icon:'📲',type:'POSTS',     time:'Viernes 21:00–23:00',    why:'Sweet spot ambos mercados'},
+      {icon:'🎯',type:'DISCOVER',  time:'Lunes — todo el día',    why:'Ventana Discover Weekly'},
+    ];
+    document.getElementById('contentSchedule').innerHTML=items.map(it=>`
+      <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start;">
+        <span style="font-size:18px;flex-shrink:0;">${it.icon}</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px;">${it.type}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:2px;">${it.time}</div>
+          <div style="font-size:11px;color:var(--muted);">${it.why}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── TABS ──────────────────────────────────────────────────
+  window.switchTab=t=>{
+    ['year','agenda','tracks','markets'].forEach(x=>{
+      document.getElementById('tab-'+x).style.display=x===t?'block':'none';
+      document.querySelector(`.ntab[data-t="${x}"]`)?.classList.toggle('active',x===t);
+    });
+    if(t==='agenda') renderAgenda();
+    if(t==='tracks') renderTracks();
+    if(t==='markets') renderContentSchedule();
+  };
+
+  window.changeYear=dir=>{
+    activeYear+=dir;
+    save();
+    renderYear();
+  };
+
+  window.goBack=()=>{if(tg)tg.close();else history.back();};
+
+  // ── INIT ──────────────────────────────────────────────────
+  renderYear();
+  renderContentSchedule();
+})();
+</script>
+</body>
+</html>

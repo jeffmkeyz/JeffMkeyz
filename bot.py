@@ -5,6 +5,12 @@ import logging
 import threading
 import requests
 from flask import Flask, request, jsonify
+from youtube_commands import (
+    handle_youtube_command,
+    handle_youtube_callback,
+    handle_youtube_state,
+)
+
 
 # ─── CONFIG ────────────────────────────────────────────────
 BOT_TOKEN  = os.environ.get("BOT_TOKEN", "")
@@ -82,23 +88,66 @@ def poll():
     requests.post(f"{API}/deleteWebhook", json={"drop_pending_updates": True})
     offset = None
     log.info("Bot iniciado con polling.")
+
+    def send_msg(chat_id, text, markup=None):
+        payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+        if markup:
+            payload["reply_markup"] = markup
+        try:
+            requests.post(f"{API}/sendMessage", json=payload)
+        except Exception as e:
+            log.error(f"send_msg error: {e}")
+
     while True:
         try:
-            params = {"timeout": 30, "allowed_updates": ["message"]}
+            params = {"timeout": 30, "allowed_updates": ["message", "callback_query"]}
             if offset:
                 params["offset"] = offset
             r = requests.get(f"{API}/getUpdates", params=params, timeout=35)
             for update in r.json().get("result", []):
                 offset = update["update_id"] + 1
+
+                # ── Callback queries (inline buttons) ──
+                cb = update.get("callback_query")
+                if cb:
+                    cb_data = cb.get("data", "")
+                    cb_chat = cb["message"]["chat"]["id"]
+                    cb_user = cb["from"]["id"]
+                    requests.post(f"{API}/answerCallbackQuery",
+                        json={"callback_query_id": cb["id"]})
+                    if cb_data.startswith("yt_"):
+                        handle_youtube_callback(cb_chat, cb_user, cb_data, send_msg)
+                    continue
+
+                # ── Regular messages ──
                 msg = update.get("message")
                 if not msg:
                     continue
                 chat_id = msg["chat"]["id"]
+                user_id = msg["from"]["id"]
                 text    = msg.get("text", "")
+
+                if not text:
+                    continue
+
+                # /youtube module
+                if text.lower().startswith("/youtube"):
+                    handle_youtube_command(chat_id, user_id, text, send_msg,
+                        lambda markup: json.dumps(markup))
+                    continue
+
+                # /start
                 if text.startswith("/start"):
                     handle_start(chat_id, msg.get("from", {}))
-                else:
-                    handle_message(chat_id)
+                    continue
+
+                # State machine (youtube multi-step)
+                if handle_youtube_state(chat_id, user_id, text, send_msg):
+                    continue
+
+                # Default
+                handle_message(chat_id)
+
         except Exception as e:
             log.error(f"Polling error: {e}")
 

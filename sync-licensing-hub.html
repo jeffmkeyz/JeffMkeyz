@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Sync Licensing Hub — MusicCodexBox</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --mint:   #00F5A0;
+      --pink:   #FF2D78;
+      --purple: #7C3AFF;
+      --gold:   #FFB830;
+      --bg:     #030308;
+      --s:      #0D0D1A;
+      --s2:     #12121F;
+      --border: rgba(255,255,255,0.05);
+      --muted:  #4A4A6A;
+      --dim:    #333355;
+    }
+    html, body {
+      background: var(--bg); min-height: 100%;
+      overflow-x: hidden;
+      font-family: 'Syne', sans-serif;
+      color: #E0E0F0;
+    }
+    ::-webkit-scrollbar { width: 0; }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative; height: 172px;
+      overflow: hidden; border-radius: 0 0 24px 24px;
+    }
+    #shaderCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    #heroOverlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(3,3,8,.97) 0%, rgba(3,3,8,.18) 70%, transparent 100%);
+    }
+    #heroTop {
+      position: absolute; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px;
+    }
+    #backBtn {
+      font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: .1em;
+      color: rgba(255,255,255,.5); background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1); border-radius: 20px;
+      padding: 5px 12px; cursor: pointer; text-decoration: none; display: inline-block;
+    }
+    #heroLabel {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: .28em; color: var(--gold);
+    }
+    #heroBottom {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 0 18px 14px;
+    }
+    #heroSub {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: .25em; color: var(--gold); margin-bottom: 3px;
+    }
+    #heroTitle {
+      font-size: 22px; font-weight: 800; line-height: 1.05;
+      letter-spacing: -.025em; color: #fff;
+    }
+    #heroTitle span { color: var(--gold); }
+    #waveCanvas { width: 100%; height: 24px; display: block; margin-top: 8px; }
+
+    /* ── TAB BAR ── */
+    #tabBar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(3,3,8,.95); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px; display: flex; gap: 6px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    #tabBar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      padding: 7px 13px; border-radius: 20px; flex-shrink: 0;
+      font-family: 'Space Mono', monospace; font-size: 8px;
+      font-weight: 700; letter-spacing: .1em;
+      border: 1px solid var(--border);
+      background: var(--s); color: var(--muted);
+      cursor: pointer; transition: all .2s; white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: rgba(255,184,48,.1);
+      border-color: rgba(255,184,48,.35); color: var(--gold);
+    }
+
+    /* ── PANELS ── */
+    .panel { display: none; padding: 16px 18px; }
+    .panel.active { display: block; }
+
+    /* ── SECTION HEADERS ── */
+    .sec-hdr {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px; margin-top: 4px;
+    }
+    .sec-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: .22em; white-space: nowrap;
+    }
+    .sec-title.gold  { color: var(--gold); }
+    .sec-title.mint  { color: var(--mint); }
+    .sec-title.purple{ color: var(--purple); }
+    .sec-title.pink  { color: var(--pink); }
+    .sec-line { flex: 1; height: 1px; background: var(--border); }
+    .sec-count { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--dim); }
+
+    /* ── GENRE FILTER ── */
+    .genre-bar {
+      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+      margin-bottom: 14px; padding-bottom: 2px;
+    }
+    .genre-bar::-webkit-scrollbar { display: none; }
+    .genre-btn {
+      padding: 5px 12px; border-radius: 20px; flex-shrink: 0;
+      font-family: 'Space Mono', monospace; font-size: 8px;
+      font-weight: 700; letter-spacing: .09em;
+      border: 1px solid var(--border);
+      background: var(--s); color: var(--muted);
+      cursor: pointer; transition: all .2s;
+    }
+    .genre-btn[data-genre="all"].active      { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.18); color: #fff; }
+    .genre-btn[data-genre="bachata"].active  { background: rgba(255,45,120,.1); border-color: rgba(255,45,120,.3); color: var(--pink); }
+    .genre-btn[data-genre="dembow"].active   { background: rgba(124,58,255,.1); border-color: rgba(124,58,255,.3); color: var(--purple); }
+    .genre-btn[data-genre="afrobeat"].active { background: rgba(255,184,48,.1); border-color: rgba(255,184,48,.3); color: var(--gold); }
+    .genre-btn[data-genre="trap"].active     { background: rgba(0,245,160,.1); border-color: rgba(0,245,160,.3); color: var(--mint); }
+
+    /* ── CURATOR CARD ── */
+    .curator-card {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px; margin-bottom: 8px;
+    }
+    .curator-card[data-genre="bachata"] { border-left: 2px solid rgba(255,45,120,.4); }
+    .curator-card[data-genre="dembow"]  { border-left: 2px solid rgba(124,58,255,.4); }
+    .curator-card[data-genre="afrobeat"]{ border-left: 2px solid rgba(255,184,48,.4); }
+    .curator-card[data-genre="trap"]    { border-left: 2px solid rgba(0,245,160,.4); }
+    .curator-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .curator-name { font-size: 12px; font-weight: 700; color: #fff; }
+    .curator-badge {
+      font-family: 'Space Mono', monospace; font-size: 7px; letter-spacing: .1em;
+      padding: 3px 7px; border-radius: 4px;
+    }
+    .curator-badge.bachata { color: var(--pink); background: rgba(255,45,120,.1); border: 1px solid rgba(255,45,120,.2); }
+    .curator-badge.dembow  { color: var(--purple); background: rgba(124,58,255,.1); border: 1px solid rgba(124,58,255,.2); }
+    .curator-badge.afrobeat{ color: var(--gold); background: rgba(255,184,48,.1); border: 1px solid rgba(255,184,48,.2); }
+    .curator-badge.trap    { color: var(--mint); background: rgba(0,245,160,.1); border: 1px solid rgba(0,245,160,.2); }
+    .curator-desc { font-size: 10px; color: var(--muted); line-height: 1.6; margin-bottom: 10px; }
+    .curator-links { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .plat-btn {
+      font-family: 'Space Mono', monospace; font-size: 8px; font-weight: 700;
+      padding: 5px 10px; border-radius: 6px; cursor: pointer;
+      border: 1px solid; text-decoration: none; letter-spacing: .07em;
+    }
+    .plat-btn.submithub { color: #FF6B35; border-color: rgba(255,107,53,.3); background: rgba(255,107,53,.08); }
+    .plat-btn.groover   { color: #A855F7; border-color: rgba(168,85,247,.3); background: rgba(168,85,247,.08); }
+    .plat-btn.musosoup  { color: #22D3EE; border-color: rgba(34,211,238,.3); background: rgba(34,211,238,.08); }
+    .curator-followers {
+      font-family: 'Space Mono', monospace; font-size: 7px; color: var(--dim); margin-left: auto;
+    }
+
+    /* ── PITCH FORM ── */
+    .add-form {
+      background: var(--s2); border: 1px solid rgba(255,184,48,.15);
+      border-radius: 14px; padding: 14px; margin-bottom: 14px;
+    }
+    .add-form-title {
+      font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: .2em;
+      color: var(--gold); margin-bottom: 12px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .form-row.full { grid-template-columns: 1fr; }
+    .fi {
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; color: #E0E0F0;
+      font-family: 'Space Mono', monospace; font-size: 9px; width: 100%; outline: none;
+    }
+    .fi::placeholder { color: var(--dim); }
+    .fi:focus { border-color: rgba(255,184,48,.4); }
+    .fi option { background: #0D0D1A; }
+    .add-btn {
+      width: 100%; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--purple), var(--gold));
+      font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+      letter-spacing: .1em; color: #000; cursor: pointer; margin-top: 4px;
+    }
+
+    /* ── PITCH ITEM ── */
+    .pitch-item {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 12px; padding: 11px 13px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+    }
+    .pitch-info { flex: 1; min-width: 0; }
+    .pitch-track { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pitch-meta { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--muted); margin-top: 2px; }
+    .pitch-status-wrap { display: flex; align-items: center; gap: 6px; }
+    .status-badge {
+      font-family: 'Space Mono', monospace; font-size: 7px; font-weight: 700;
+      letter-spacing: .08em; padding: 4px 8px; border-radius: 5px; cursor: pointer;
+      white-space: nowrap;
+    }
+    .status-badge.enviado    { color: var(--muted); background: rgba(74,74,106,.15); border: 1px solid rgba(74,74,106,.25); }
+    .status-badge.respondido { color: var(--purple); background: rgba(124,58,255,.15); border: 1px solid rgba(124,58,255,.3); }
+    .status-badge.aceptado   { color: var(--mint); background: rgba(0,245,160,.1); border: 1px solid rgba(0,245,160,.25); }
+    .status-badge.rechazado  { color: var(--pink); background: rgba(255,45,120,.1); border: 1px solid rgba(255,45,120,.25); }
+    .del-btn {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      color: var(--dim); font-size: 11px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; margin-bottom: 14px;
+    }
+    .stat-chip {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 6px; text-align: center;
+    }
+    .stat-num { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; line-height: 1; }
+    .stat-lbl { font-size: 7px; color: var(--dim); letter-spacing: .07em; margin-top: 3px; }
+    .stat-num.s-env { color: var(--muted); }
+    .stat-num.s-res { color: var(--purple); }
+    .stat-num.s-ace { color: var(--mint); }
+    .stat-num.s-rch { color: var(--pink); }
+
+    /* ── SYNC CHECKLIST ── */
+    .check-item {
+      display: flex; align-items: flex-start; gap: 11px;
+      padding: 11px 13px; background: var(--s);
+      border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 7px; cursor: pointer; transition: opacity .2s;
+    }
+    .check-item.done { opacity: .5; }
+    .check-box {
+      width: 20px; height: 20px; border-radius: 6px;
+      border: 1.5px solid var(--dim); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s; margin-top: 1px;
+    }
+    .check-item.done .check-box {
+      background: var(--mint); border-color: var(--mint); color: #000; font-size: 11px;
+    }
+    .check-body { flex: 1; }
+    .check-text { font-size: 11px; color: #E0E0F0; line-height: 1.4; }
+    .check-item.done .check-text { text-decoration: line-through; color: var(--muted); }
+    .check-tag {
+      font-family: 'Space Mono', monospace; font-size: 7px; letter-spacing: .08em;
+      padding: 2px 7px; border-radius: 4px; margin-top: 4px; display: inline-block;
+    }
+    .check-tag.stems  { background: rgba(0,245,160,.08); color: var(--mint); border: 1px solid rgba(0,245,160,.2); }
+    .check-tag.meta   { background: rgba(124,58,255,.08); color: var(--purple); border: 1px solid rgba(124,58,255,.2); }
+    .check-tag.lic    { background: rgba(255,184,48,.08); color: var(--gold); border: 1px solid rgba(255,184,48,.2); }
+    .check-tag.pub    { background: rgba(255,45,120,.08); color: var(--pink); border: 1px solid rgba(255,45,120,.2); }
+    .check-progress {
+      height: 4px; background: var(--s2); border-radius: 4px; margin-bottom: 14px; overflow: hidden;
+    }
+    .check-progress-bar {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--mint), var(--purple));
+      transition: width .4s cubic-bezier(.16,1,.3,1);
+    }
+    .check-progress-lbl {
+      font-family: 'Space Mono', monospace; font-size: 8px;
+      color: var(--muted); text-align: right; margin-bottom: 6px;
+    }
+
+    /* ── SUPERVISOR TRACKER ── */
+    .sup-item {
+      background: var(--s2); border: 1px solid rgba(255,184,48,.12);
+      border-radius: 12px; padding: 11px 13px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+    }
+    .sup-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(255,184,48,.1); border: 1px solid rgba(255,184,48,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .sup-info { flex: 1; min-width: 0; }
+    .sup-name { font-size: 11px; font-weight: 700; color: #fff; }
+    .sup-meta { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--muted); margin-top: 2px; }
+
+    /* ── COMMUNITY CARD ── */
+    .comm-card {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 14px; padding: 13px; margin-bottom: 8px;
+    }
+    .comm-top { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+    .comm-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .comm-icon.discord { background: rgba(88,101,242,.15); }
+    .comm-icon.reddit  { background: rgba(255,69,0,.12); }
+    .comm-icon.blog    { background: rgba(0,245,160,.1); }
+    .comm-name { font-size: 12px; font-weight: 700; color: #fff; }
+    .comm-type { font-family: 'Space Mono', monospace; font-size: 7px; color: var(--muted); letter-spacing: .1em; margin-top: 1px; }
+    .comm-desc { font-size: 10px; color: var(--muted); line-height: 1.6; margin-bottom: 9px; }
+    .comm-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 9px; }
+    .comm-tag {
+      font-family: 'Space Mono', monospace; font-size: 7px;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(124,58,255,.1); color: var(--purple);
+      border: 1px solid rgba(124,58,255,.2);
+    }
+    .comm-link {
+      font-family: 'Space Mono', monospace; font-size: 8px; font-weight: 700;
+      padding: 7px 14px; border-radius: 8px; cursor: pointer;
+      display: inline-block; text-decoration: none; letter-spacing: .06em;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      color: #E0E0F0;
+    }
+
+    /* ── EMAIL PANEL ── */
+    .counter-box {
+      background: linear-gradient(135deg, rgba(124,58,255,.1), rgba(255,184,48,.07));
+      border: 1px solid rgba(124,58,255,.2); border-radius: 16px;
+      padding: 20px 16px; text-align: center; margin-bottom: 14px;
+      position: relative; overflow: hidden;
+    }
+    .counter-box::before {
+      content: '';
+      position: absolute; width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,58,255,.12), transparent);
+      top: -60px; right: -40px;
+    }
+    .counter-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 48px; font-weight: 700; color: var(--gold); line-height: 1;
+    }
+    .counter-lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: .22em; color: var(--muted); margin-top: 5px;
+    }
+    .counter-btns { display: flex; gap: 8px; margin-top: 14px; }
+    .cnt-btn {
+      flex: 1; padding: 9px; border-radius: 9px;
+      font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
+      border: 1px solid; cursor: pointer;
+    }
+    .cnt-btn.minus { color: var(--pink); border-color: rgba(255,45,120,.3); background: rgba(255,45,120,.08); }
+    .cnt-btn.plus  { color: var(--mint); border-color: rgba(0,245,160,.3); background: rgba(0,245,160,.08); }
+    .cnt-edit-row { display: flex; gap: 8px; margin-top: 8px; }
+    .cnt-edit-row .fi { font-size: 13px; text-align: center; }
+    .cnt-set-btn {
+      padding: 8px 16px; border-radius: 9px; border: none; cursor: pointer;
+      background: var(--gold); color: #000;
+      font-family: 'Space Mono', monospace; font-size: 9px; font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .template-box {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px; margin-bottom: 14px;
+    }
+    .template-hdr {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .template-title { font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: .2em; color: var(--gold); }
+    .copy-btn {
+      font-family: 'Space Mono', monospace; font-size: 8px; font-weight: 700;
+      padding: 4px 10px; border-radius: 6px; cursor: pointer;
+      background: rgba(0,245,160,.1); border: 1px solid rgba(0,245,160,.25); color: var(--mint);
+    }
+    .template-text {
+      font-size: 10px; color: #C0C0D8; line-height: 1.9;
+      white-space: pre-wrap; border-radius: 8px; padding: 10px;
+      background: rgba(255,255,255,.02); border: 1px solid var(--border);
+    }
+
+    .reminder-box {
+      background: rgba(124,58,255,.06); border: 1px solid rgba(124,58,255,.2);
+      border-radius: 14px; padding: 14px; margin-bottom: 14px;
+    }
+    .reminder-title { font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: .2em; color: var(--purple); margin-bottom: 12px; }
+    .days-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; }
+    .day-chip {
+      background: var(--s2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 2px; text-align: center;
+    }
+    .day-chip.best { border-color: rgba(0,245,160,.35); background: rgba(0,245,160,.07); }
+    .day-chip.ok   { border-color: rgba(255,184,48,.25); background: rgba(255,184,48,.05); }
+    .day-chip.bad  { opacity: .4; }
+    .day-abbr { font-family: 'Space Mono', monospace; font-size: 7px; font-weight: 700; letter-spacing: .05em; }
+    .day-chip.best .day-abbr { color: var(--mint); }
+    .day-chip.ok   .day-abbr { color: var(--gold); }
+    .day-chip.bad  .day-abbr { color: var(--dim); }
+    .day-score { font-size: 8px; margin-top: 3px; }
+
+    /* ── COLABS ── */
+    .niche-bar {
+      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+      margin-bottom: 14px;
+    }
+    .niche-bar::-webkit-scrollbar { display: none; }
+    .niche-btn {
+      padding: 5px 12px; border-radius: 20px; flex-shrink: 0;
+      font-family: 'Space Mono', monospace; font-size: 8px; font-weight: 700;
+      letter-spacing: .09em; border: 1px solid var(--border);
+      background: var(--s); color: var(--muted); cursor: pointer; transition: all .2s;
+    }
+    .niche-btn[data-niche="all"].active       { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.18); color: #fff; }
+    .niche-btn[data-niche="basketball"].active{ background: rgba(255,140,0,.1); border-color: rgba(255,140,0,.3); color: #FF8C00; }
+    .niche-btn[data-niche="fitness"].active   { background: rgba(0,245,160,.1); border-color: rgba(0,245,160,.3); color: var(--mint); }
+    .niche-btn[data-niche="lifestyle"].active { background: rgba(255,45,120,.1); border-color: rgba(255,45,120,.3); color: var(--pink); }
+    .niche-btn[data-niche="music"].active     { background: rgba(124,58,255,.1); border-color: rgba(124,58,255,.3); color: var(--purple); }
+
+    .colab-card {
+      background: var(--s); border: 1px solid var(--border);
+      border-radius: 14px; padding: 13px; margin-bottom: 8px;
+    }
+    .colab-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
+    .colab-name { font-size: 12px; font-weight: 700; color: #fff; }
+    .colab-niche {
+      font-family: 'Space Mono', monospace; font-size: 7px; letter-spacing: .09em;
+      padding: 3px 8px; border-radius: 4px;
+    }
+    .colab-niche.basketball { color: #FF8C00; background: rgba(255,140,0,.1); border: 1px solid rgba(255,140,0,.2); }
+    .colab-niche.fitness    { color: var(--mint); background: rgba(0,245,160,.1); border: 1px solid rgba(0,245,160,.2); }
+    .colab-niche.lifestyle  { color: var(--pink); background: rgba(255,45,120,.1); border: 1px solid rgba(255,45,120,.2); }
+    .colab-niche.music      { color: var(--purple); background: rgba(124,58,255,.1); border: 1px solid rgba(124,58,255,.2); }
+    .colab-meta { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--muted); margin-bottom: 8px; }
+    .colab-footer { display: flex; gap: 8px; align-items: center; }
+    .colab-link {
+      flex: 1; padding: 6px 12px; border-radius: 8px; text-decoration: none; text-align: center;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      font-family: 'Space Mono', monospace; font-size: 8px; color: #E0E0F0; cursor: pointer;
+    }
+    .colab-del {
+      padding: 6px 10px; border-radius: 8px; cursor: pointer;
+      background: rgba(255,45,120,.07); border: 1px solid rgba(255,45,120,.2);
+      color: var(--pink); font-family: 'Space Mono', monospace; font-size: 8px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty { text-align: center; padding: 28px 20px; }
+    .empty-icon { font-size: 28px; margin-bottom: 8px; opacity: .3; }
+    .empty-text { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--dim); letter-spacing: .1em; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--s); border: 1px solid rgba(0,245,160,.3);
+      border-radius: 20px; padding: 9px 18px;
+      font-family: 'Space Mono', monospace; font-size: 9px; color: var(--mint);
+      letter-spacing: .1em; opacity: 0;
+      transition: opacity .25s, transform .25s;
+      z-index: 999; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #spacer { height: 44px; }
+    .fade { opacity: 0; transform: translateY(12px); transition: opacity .45s, transform .45s; }
+    .fade.in { opacity: 1; transform: translateY(0); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div id="hero">
+  <canvas id="shaderCanvas"></canvas>
+  <div id="heroOverlay"></div>
+  <div id="heroTop">
+    <a id="backBtn" onclick="goBack()">← CODEX</a>
+    <div id="heroLabel">PRO · SYNC HUB</div>
+  </div>
+  <div id="heroBottom">
+    <div id="heroSub">// INDUSTRIA SIN FILTROS</div>
+    <div id="heroTitle">SYNC <span>LICENSING</span><br/>HUB</div>
+    <canvas id="waveCanvas" height="24"></canvas>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div id="tabBar">
+  <button class="tab-btn active" data-tab="playlists">PLAYLISTS</button>
+  <button class="tab-btn" data-tab="sync">SYNC</button>
+  <button class="tab-btn" data-tab="comunidades">COMUNIDADES</button>
+  <button class="tab-btn" data-tab="email">EMAIL LIST</button>
+  <button class="tab-btn" data-tab="colabs">COLABS</button>
+</div>
+
+<!-- ══════════════════ PANEL: PLAYLISTS ══════════════════ -->
+<div class="panel active" id="panel-playlists">
+
+  <div class="sec-hdr fade">
+    <span class="sec-title gold">CURADORES INDEPENDIENTES</span>
+    <div class="sec-line"></div>
+    <span class="sec-count">12</span>
+  </div>
+
+  <div class="genre-bar fade">
+    <button class="genre-btn active" data-genre="all">TODO</button>
+    <button class="genre-btn" data-genre="bachata">BACHATA</button>
+    <button class="genre-btn" data-genre="dembow">DEMBOW</button>
+    <button class="genre-btn" data-genre="afrobeat">AFROBEAT</button>
+    <button class="genre-btn" data-genre="trap">TRAP LATINO</button>
+  </div>
+
+  <div id="curatorList"></div>
+
+  <div class="sec-hdr fade" style="margin-top:20px">
+    <span class="sec-title mint">TRACKER DE PITCHES</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="stats-row fade" id="pitchStats">
+    <div class="stat-chip"><div class="stat-num s-env" id="st-env">0</div><div class="stat-lbl">ENVIADO</div></div>
+    <div class="stat-chip"><div class="stat-num s-res" id="st-res">0</div><div class="stat-lbl">RESPONDIDO</div></div>
+    <div class="stat-chip"><div class="stat-num s-ace" id="st-ace">0</div><div class="stat-lbl">ACEPTADO</div></div>
+    <div class="stat-chip"><div class="stat-num s-rch" id="st-rch">0</div><div class="stat-lbl">RECHAZADO</div></div>
+  </div>
+
+  <div class="add-form fade">
+    <div class="add-form-title">◈ AÑADIR PITCH</div>
+    <div class="form-row">
+      <input class="fi" id="pTrack" placeholder="Nombre del track"/>
+      <input class="fi" id="pCurator" placeholder="Curador / Playlist"/>
+    </div>
+    <div class="form-row">
+      <select class="fi" id="pPlatform">
+        <option value="">Plataforma</option>
+        <option>SubmitHub</option>
+        <option>Groover</option>
+        <option>Musosoup</option>
+        <option>Directo</option>
+        <option>Email</option>
+      </select>
+      <select class="fi" id="pGenre">
+        <option value="">Género</option>
+        <option>Bachata</option>
+        <option>Dembow</option>
+        <option>Afrobeat</option>
+        <option>Trap Latino</option>
+        <option>Reggaeton</option>
+        <option>Pop Latino</option>
+      </select>
+    </div>
+    <button class="add-btn" onclick="addPitch()">+ REGISTRAR PITCH</button>
+  </div>
+
+  <div id="pitchList"></div>
+</div>
+
+<!-- ══════════════════ PANEL: SYNC ══════════════════ -->
+<div class="panel" id="panel-sync">
+
+  <div class="sec-hdr fade">
+    <span class="sec-title gold">PREPARACIÓN DE CATÁLOGO</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="check-progress-lbl fade" id="checkLbl">0 / 16 completados</div>
+  <div class="check-progress fade"><div class="check-progress-bar" id="checkBar" style="width:0%"></div></div>
+
+  <div id="checkList"></div>
+
+  <div class="sec-hdr fade" style="margin-top:20px">
+    <span class="sec-title gold">SUPERVISORES MUSICALES</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="add-form fade">
+    <div class="add-form-title">⟴ AÑADIR ENVÍO A SUPERVISOR</div>
+    <div class="form-row">
+      <input class="fi" id="supName" placeholder="Nombre del supervisor"/>
+      <input class="fi" id="supCompany" placeholder="Productora / Agencia"/>
+    </div>
+    <div class="form-row">
+      <input class="fi" id="supTrack" placeholder="Track enviado"/>
+      <select class="fi" id="supStatus">
+        <option value="enviado">Enviado</option>
+        <option value="respondido">Respondido</option>
+        <option value="aceptado">Aceptado</option>
+        <option value="rechazado">Rechazado</option>
+      </select>
+    </div>
+    <button class="add-btn" onclick="addSupervisor()">+ REGISTRAR SUPERVISOR</button>
+  </div>
+
+  <div id="supList"></div>
+</div>
+
+<!-- ══════════════════ PANEL: COMUNIDADES ══════════════════ -->
+<div class="panel" id="panel-comunidades">
+
+  <div class="sec-hdr fade">
+    <span class="sec-title purple">DISCORDS</span>
+    <div class="sec-line"></div>
+    <span class="sec-count">3</span>
+  </div>
+  <div id="discordList"></div>
+
+  <div class="sec-hdr fade" style="margin-top:6px">
+    <span class="sec-title pink">SUBREDDITS</span>
+    <div class="sec-line"></div>
+    <span class="sec-count">4</span>
+  </div>
+  <div id="redditList"></div>
+
+  <div class="sec-hdr fade" style="margin-top:6px">
+    <span class="sec-title mint">BLOGS & MEDIOS</span>
+    <div class="sec-line"></div>
+    <span class="sec-count">5</span>
+  </div>
+  <div id="blogList"></div>
+</div>
+
+<!-- ══════════════════ PANEL: EMAIL LIST ══════════════════ -->
+<div class="panel" id="panel-email">
+
+  <div class="counter-box fade">
+    <div class="counter-num" id="subCount">0</div>
+    <div class="counter-lbl">SUSCRIPTORES ACTIVOS</div>
+    <div class="counter-btns">
+      <button class="cnt-btn minus" onclick="adjustSubs(-1)">−</button>
+      <button class="cnt-btn plus"  onclick="adjustSubs(+1)">+</button>
+    </div>
+    <div class="cnt-edit-row">
+      <input class="fi" id="subInput" type="number" placeholder="Número exacto" style="text-align:center"/>
+      <button class="cnt-set-btn" onclick="setSubs()">ACTUALIZAR</button>
+    </div>
+  </div>
+
+  <div class="reminder-box fade">
+    <div class="reminder-title">◎ MEJOR MOMENTO PARA ENVIAR</div>
+    <div class="days-grid">
+      <div class="day-chip bad"><div class="day-abbr">LUN</div><div class="day-score">😴</div></div>
+      <div class="day-chip best"><div class="day-abbr">MAR</div><div class="day-score">🔥</div></div>
+      <div class="day-chip best"><div class="day-abbr">MIÉ</div><div class="day-score">🔥</div></div>
+      <div class="day-chip best"><div class="day-abbr">JUE</div><div class="day-score">🔥</div></div>
+      <div class="day-chip ok"><div class="day-abbr">VIE</div><div class="day-score">✓</div></div>
+      <div class="day-chip bad"><div class="day-abbr">SÁB</div><div class="day-score">😴</div></div>
+      <div class="day-chip bad"><div class="day-abbr">DOM</div><div class="day-score">😴</div></div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:10px;line-height:1.6;">
+      Envía entre <span style="color:var(--mint)">mar–jue</span>, hora ideal <span style="color:var(--gold)">10–12h o 18–20h</span> (hora local del suscriptor).
+      Al menos <span style="color:var(--purple)">3 días antes</span> del lanzamiento.
+    </div>
+  </div>
+
+  <div class="template-box fade">
+    <div class="template-hdr">
+      <div class="template-title">◈ PLANTILLA — EMAIL DE LANZAMIENTO</div>
+      <button class="copy-btn" onclick="copyTemplate()">COPIAR</button>
+    </div>
+    <div class="template-text" id="emailTemplate">Asunto: 🎵 [NOMBRE DEL TRACK] ya está disponible
+
+Hola [nombre],
+
+Nuevo lanzamiento. Sin rodeos.
+
+[NOMBRE DEL TRACK] ya está en todas las plataformas — y lo hice pensando en vosotros.
+
+→ Escúchalo ahora: [LINK]
+
+¿Qué tiene de diferente este track?
+[2–3 líneas sobre el proceso, la historia o el mood]
+
+Si te gusta, lo más importante que puedes hacer es:
+✓ Guardarlo en tu biblioteca
+✓ Compartirlo con alguien que lo necesite escuchar
+✓ Dejar tu reseña en Spotify
+
+Gracias por estar aquí desde el principio.
+
+— [TU NOMBRE ARTÍSTICO]
+
+P.D. Responde este email si quieres acceso anticipado al próximo lanzamiento.</div>
+  </div>
+
+  <div class="template-box fade">
+    <div class="template-hdr">
+      <div class="template-title">⟐ PLANTILLA — ANUNCIO PREVIO (5 días antes)</div>
+      <button class="copy-btn" onclick="copyTemplate2()">COPIAR</button>
+    </div>
+    <div class="template-text" id="emailTemplate2">Asunto: Algo se viene el [FECHA]
+
+Hola [nombre],
+
+No voy a decirte mucho todavía.
+
+Solo que el [FECHA] llega algo que llevo trabajando [tiempo].
+
+Te cuento una cosa: [UNA PISTA sobre el track — mood, historia, inspiración]
+
+Marca la fecha. Estarás entre los primeros en escucharlo.
+
+— [TU NOMBRE ARTÍSTICO]</div>
+  </div>
+</div>
+
+<!-- ══════════════════ PANEL: COLABS ══════════════════ -->
+<div class="panel" id="panel-colabs">
+
+  <div class="sec-hdr fade">
+    <span class="sec-title gold">CREADORES DE CONTENIDO</span>
+    <div class="sec-line"></div>
+  </div>
+
+  <div class="niche-bar fade">
+    <button class="niche-btn active" data-niche="all">TODO</button>
+    <button class="niche-btn" data-niche="basketball">BASKETBALL</button>
+    <button class="niche-btn" data-niche="fitness">FITNESS</button>
+    <button class="niche-btn" data-niche="lifestyle">LIFESTYLE</button>
+    <button class="niche-btn" data-niche="music">MÚSICA</button>
+  </div>
+
+  <div class="add-form fade">
+    <div class="add-form-title">⬡ AÑADIR CREADOR</div>
+    <div class="form-row">
+      <input class="fi" id="colHandle" placeholder="@handle"/>
+      <select class="fi" id="colNiche">
+        <option value="">Nicho</option>
+        <option value="basketball">Basketball</option>
+        <option value="fitness">Fitness Urbano</option>
+        <option value="lifestyle">Lifestyle Latino</option>
+        <option value="music">Música / Reseñas</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <select class="fi" id="colPlatform">
+        <option value="">Plataforma</option>
+        <option>TikTok</option>
+        <option>Instagram</option>
+        <option>YouTube</option>
+        <option>TikTok + Instagram</option>
+      </select>
+      <input class="fi" id="colFollowers" placeholder="Seguidores (ej: 250k)"/>
+    </div>
+    <div class="form-row full">
+      <input class="fi" id="colLink" placeholder="URL del perfil o contacto"/>
+    </div>
+    <button class="add-btn" onclick="addColab()">+ AÑADIR A BASE DE DATOS</button>
+  </div>
+
+  <div id="colabList"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<div id="spacer"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════════
+
+const CURATORS = [
+  { name:"Latin Soul Sessions", genre:"bachata", desc:"Curador especializado en bachata sensual y moderna. Alta tasa de respuesta.", platforms:["groover"], followers:"4.2k", links:{ groover:"https://groover.co/en/music-blog/latin-soul/" } },
+  { name:"Raíces Románticas", genre:"bachata", desc:"Playlists editoriales de bachata clásica y contemporánea. Pitches en inglés.", platforms:["submithub"], followers:"8.5k", links:{ submithub:"https://www.submithub.com/" } },
+  { name:"Corazón Latino", genre:"bachata", desc:"Mix curatorial de bachata, salsa y pop romántico. Muy activo en Spotify editorial.", platforms:["submithub","musosoup"], followers:"12k", links:{ submithub:"https://www.submithub.com/", musosoup:"https://musosoup.com/" } },
+  { name:"El Bloque Urbano", genre:"dembow", desc:"Red de curadores de urban latin. Llega a playlists en Spotify y Apple Music.", platforms:["submithub"], followers:"6.1k", links:{ submithub:"https://www.submithub.com/" } },
+  { name:"Dembow Puro", genre:"dembow", desc:"Especializado en dembow dominicano auténtico. Comunidad activa en Discord.", platforms:["groover"], followers:"3.4k", links:{ groover:"https://groover.co/" } },
+  { name:"Calle Y Ritmo", genre:"dembow", desc:"Cruza trap latino, dembow y urbano experimental. Muy abierto a nuevos artistas.", platforms:["musosoup","submithub"], followers:"5.8k", links:{ musosoup:"https://musosoup.com/", submithub:"https://www.submithub.com/" } },
+  { name:"Afro Latin Fusion", genre:"afrobeat", desc:"Pitches para afrobeats con influencias latinas. Buena tasa de colocación en editorial.", platforms:["submithub","groover"], followers:"9.3k", links:{ submithub:"https://www.submithub.com/", groover:"https://groover.co/" } },
+  { name:"Global Grooves Network", genre:"afrobeat", desc:"Red amplia de curadores afro. Alcance en Europa, Latinoamérica y África.", platforms:["musosoup"], followers:"15k", links:{ musosoup:"https://musosoup.com/" } },
+  { name:"Lagos to Santo Domingo", genre:"afrobeat", desc:"Conexión única afrobeat–dominicano. Ideal para tracks que cruzan estos mundos.", platforms:["submithub"], followers:"4.7k", links:{ submithub:"https://www.submithub.com/" } },
+  { name:"Underground Latino", genre:"trap", desc:"Trap en español underground, authentic. Sin polished mainstream, puro barrio.", platforms:["submithub"], followers:"7.2k", links:{ submithub:"https://www.submithub.com/" } },
+  { name:"La Muralla Sonora", genre:"trap", desc:"Trap latino + urban experimental. Curador muy exigente, alta credibilidad.", platforms:["groover"], followers:"5.5k", links:{ groover:"https://groover.co/" } },
+  { name:"Beats Del Barrio", genre:"trap", desc:"Cruza trap, dembow y urbano. Gran red de blogs y Spotify playlists propias.", platforms:["submithub","musosoup"], followers:"11k", links:{ submithub:"https://www.submithub.com/", musosoup:"https://musosoup.com/" } },
+];
+
+const CHECKLIST = [
+  { id:"s1", text:"Exportar stems separados: kick, bass, pad/melody, vocals, FX", tag:"stems" },
+  { id:"s2", text:"Normalizar todos los stems a -3 dBFS peak", tag:"stems" },
+  { id:"s3", text:"Exportar en WAV 24-bit / 48 kHz (estándar broadcast)", tag:"stems" },
+  { id:"s4", text:"Crear versiones: full mix, instrumental, a cappella, no-melody", tag:"stems" },
+  { id:"m1", text:"ISRC asignado y verificado en DistroKid", tag:"meta" },
+  { id:"m2", text:"Título, artista, BPM y tonalidad correctos en metadata", tag:"meta" },
+  { id:"m3", text:"Mood tags añadidos (energético, romántico, oscuro, motivacional)", tag:"meta" },
+  { id:"m4", text:"Sync tags de uso: deportes, acción, drama, lifestyle, publicidad", tag:"meta" },
+  { id:"m5", text:"Descripción del track en inglés (mínimo 3 frases)", tag:"meta" },
+  { id:"l1", text:"Confirmar propiedad total de masters y publishing", tag:"lic" },
+  { id:"l2", text:"Split sheets firmados con todos los colaboradores", tag:"lic" },
+  { id:"l3", text:"Registrado en PRO (SGAE / ASCAP / BMI)", tag:"lic" },
+  { id:"l4", text:"Clearance de samples completado (si aplica)", tag:"lic" },
+  { id:"p1", text:"Cuenta creada en Musicbed y perfil completo", tag:"pub" },
+  { id:"p2", text:"Track subido a Artlist / Epidemic Sound (si aplica)", tag:"pub" },
+  { id:"p3", text:"Perfil activo en Pond5 o Shutterstock Music", tag:"pub" },
+];
+
+const COMMUNITIES = {
+  discord:[
+    { name:"Latin Music Producers Hub", desc:"El servidor más activo para productores de música urbana latina. Canales por género: bachata, dembow, trap, afro.", tags:["Bachata","Dembow","Trap","Afrobeat"], url:"https://discord.gg/latinmusicpro" },
+    { name:"Urban Latino Beat Makers", desc:"Comunidad de beatmakers de trap latino y dembow. Sesiones de feedback, collabs y A&R contacts.", tags:["Trap","Dembow","Beats"], url:"https://discord.gg/" },
+    { name:"Independent Latin Artists", desc:"Para artistas independientes: distribución, marketing digital, sync licensing y monetización.", tags:["Distribución","Marketing","Sync"], url:"https://discord.gg/" },
+  ],
+  reddit:[
+    { name:"r/LatinMusic", desc:"Subreddit general de música latina. Ideal para anuncios de lanzamiento y feedback de audiencia real.", tags:["General","Lanzamientos"], url:"https://reddit.com/r/LatinMusic" },
+    { name:"r/urbanolatino", desc:"Comunidad de urban latin: reggaeton, dembow, trap. Muy activa con noticias de la industria.", tags:["Reggaeton","Dembow","Trap"], url:"https://reddit.com/r/urbanolatino" },
+    { name:"r/Bachata", desc:"Comunidad dedicada a la bachata. Comparte tracks, busca feedback y conecta con fans.", tags:["Bachata","Salsa"], url:"https://reddit.com/r/Bachata" },
+    { name:"r/AfrobeatMusic", desc:"Afrobeat y sus fusiones. Conexión con productores africanos y latinos interesados en el género.", tags:["Afrobeat","Fusion"], url:"https://reddit.com/r/AfrobeatMusic" },
+  ],
+  blog:[
+    { name:"Remezcla", desc:"El media líder de cultura latina independiente. Cubre música, arte y cine. Acepta demos de artistas emergentes.", tags:["Noticias","Reviews","Cultura"], url:"https://remezcla.com" },
+    { name:"Sounds and Colours", desc:"Blog con cobertura especializada en música de Latinoamérica y África. Alta credibilidad en sync y licensing.", tags:["Afrobeat","Latinoamérica","Sync"], url:"https://soundsandcolours.com" },
+    { name:"Ones To Watch", desc:"Plataforma de descubrimiento. Publica sobre artistas emergentes de géneros urbanos y pop global.", tags:["Emergentes","Pop","Urban"], url:"https://www.ones2watch.com" },
+    { name:"DoomTree Blog", desc:"Comunidad editorial independiente muy respetada en la escena indie y urban underground.", tags:["Indie","Underground"], url:"https://doomtree.net/blog" },
+    { name:"Latin Music Commission", desc:"Recurso oficial para productores y artistas que buscan entrar en el mercado de sync y licencias.", tags:["Sync","Licensing","Industria"], url:"https://latinmusiccommission.com" },
+  ],
+};
+
+const DEFAULT_COLABS = [
+  { id:"c0", handle:"@urbanballin_es", niche:"basketball", platform:"TikTok", followers:"280k", link:"https://tiktok.com/" },
+  { id:"c1", handle:"@streethoops_eu", niche:"basketball", platform:"Instagram", followers:"95k", link:"https://instagram.com/" },
+  { id:"c2", handle:"@fitlatino_pro", niche:"fitness", platform:"TikTok", followers:"410k", link:"https://tiktok.com/" },
+  { id:"c3", handle:"@gymhits_music", niche:"fitness", platform:"Instagram", followers:"120k", link:"https://instagram.com/" },
+  { id:"c4", handle:"@vidaurbanalatina", niche:"lifestyle", platform:"TikTok", followers:"340k", link:"https://tiktok.com/" },
+  { id:"c5", handle:"@caribbeandream_es", niche:"lifestyle", platform:"Instagram", followers:"88k", link:"https://instagram.com/" },
+  { id:"c6", handle:"@latinsoundz", niche:"music", platform:"TikTok", followers:"520k", link:"https://tiktok.com/" },
+  { id:"c7", handle:"@beat_discoveries", niche:"music", platform:"TikTok + Instagram", followers:"160k", link:"https://tiktok.com/" },
+];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let pitches      = JSON.parse(localStorage.getItem("mcb_pitches") || "[]");
+let checkState   = JSON.parse(localStorage.getItem("mcb_checks") || "{}");
+let supervisors  = JSON.parse(localStorage.getItem("mcb_sups") || "[]");
+let subCount     = parseInt(localStorage.getItem("mcb_subs") || "0");
+let colabs       = JSON.parse(localStorage.getItem("mcb_colabs") || JSON.stringify(DEFAULT_COLABS));
+let activeGenre  = "all";
+let activeNiche  = "all";
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function initTabs() {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+      setTimeout(initIntersection, 50);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════
+//  PLAYLISTS TAB
+// ══════════════════════════════════════════════
+function renderCurators() {
+  const list = document.getElementById("curatorList");
+  const filtered = activeGenre === "all" ? CURATORS : CURATORS.filter(c => c.genre === activeGenre);
+  list.innerHTML = filtered.map(c => `
+    <div class="curator-card fade" data-genre="${c.genre}">
+      <div class="curator-top">
+        <div class="curator-name">${c.name}</div>
+        <div class="curator-badge ${c.genre}">${c.genre.toUpperCase()}</div>
+      </div>
+      <div class="curator-desc">${c.desc}</div>
+      <div class="curator-links">
+        ${c.platforms.map(p => `<a class="plat-btn ${p}" href="${c.links[p]||'#'}" onclick="openLink(event,'${c.links[p]||'#'}')">
+          ${p==='submithub'?'SubmitHub':p==='groover'?'Groover':'Musosoup'} →
+        </a>`).join("")}
+        <span class="curator-followers">${c.followers} seguidores</span>
+      </div>
+    </div>`).join("");
+  setTimeout(initIntersection, 30);
+}
+
+function initGenreFilter() {
+  document.querySelectorAll(".genre-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".genre-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeGenre = btn.dataset.genre;
+      renderCurators();
+    });
+  });
+}
+
+function addPitch() {
+  const track    = document.getElementById("pTrack").value.trim();
+  const curator  = document.getElementById("pCurator").value.trim();
+  const platform = document.getElementById("pPlatform").value;
+  const genre    = document.getElementById("pGenre").value;
+  if (!track || !curator) { toast("Rellena el track y curador"); return; }
+  const p = { id: Date.now(), track, curator, platform, genre, status:"enviado", date: new Date().toLocaleDateString("es-ES") };
+  pitches.unshift(p);
+  savePitches();
+  document.getElementById("pTrack").value = "";
+  document.getElementById("pCurator").value = "";
+  renderPitches();
+  toast("Pitch registrado ✓");
+}
+
+function cyclePitchStatus(id) {
+  const states = ["enviado","respondido","aceptado","rechazado"];
+  const p = pitches.find(x => x.id === id);
+  if (!p) return;
+  p.status = states[(states.indexOf(p.status)+1) % states.length];
+  savePitches();
+  renderPitches();
+}
+
+function deletePitch(id) {
+  pitches = pitches.filter(x => x.id !== id);
+  savePitches();
+  renderPitches();
+  toast("Pitch eliminado");
+}
+
+function savePitches() { localStorage.setItem("mcb_pitches", JSON.stringify(pitches)); }
+
+function renderPitches() {
+  const list = document.getElementById("pitchList");
+  const stats = { enviado:0, respondido:0, aceptado:0, rechazado:0 };
+  pitches.forEach(p => stats[p.status]++);
+  document.getElementById("st-env").textContent = stats.enviado;
+  document.getElementById("st-res").textContent = stats.respondido;
+  document.getElementById("st-ace").textContent = stats.aceptado;
+  document.getElementById("st-rch").textContent = stats.rechazado;
+
+  if (!pitches.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">◎</div><div class="empty-text">SIN PITCHES AÚN — EMPIEZA ENVIANDO</div></div>`;
+    return;
+  }
+  list.innerHTML = pitches.map(p => `
+    <div class="pitch-item">
+      <div class="pitch-info">
+        <div class="pitch-track">${p.track}</div>
+        <div class="pitch-meta">${p.curator}${p.platform ? " · " + p.platform : ""}${p.genre ? " · " + p.genre : ""} · ${p.date}</div>
+      </div>
+      <div class="pitch-status-wrap">
+        <span class="status-badge ${p.status}" onclick="cyclePitchStatus(${p.id})" title="Click para cambiar estado">
+          ${p.status.toUpperCase()}
+        </span>
+        <button class="del-btn" onclick="deletePitch(${p.id})">×</button>
+      </div>
+    </div>`).join("");
+}
+
+// ══════════════════════════════════════════════
+//  SYNC TAB
+// ══════════════════════════════════════════════
+function renderChecklist() {
+  const done   = CHECKLIST.filter(c => checkState[c.id]).length;
+  const total  = CHECKLIST.length;
+  const pct    = Math.round((done / total) * 100);
+  document.getElementById("checkLbl").textContent = `${done} / ${total} completados`;
+  document.getElementById("checkBar").style.width = pct + "%";
+
+  const tagLabel = { stems:"STEMS", meta:"METADATA", lic:"LICENCIAS", pub:"PUBLISHERZ" };
+  document.getElementById("checkList").innerHTML = CHECKLIST.map(c => `
+    <div class="check-item fade${checkState[c.id] ? " done" : ""}" onclick="toggleCheck('${c.id}')">
+      <div class="check-box">${checkState[c.id] ? "✓" : ""}</div>
+      <div class="check-body">
+        <div class="check-text">${c.text}</div>
+        <div class="check-tag ${c.tag}">${tagLabel[c.tag]}</div>
+      </div>
+    </div>`).join("");
+  setTimeout(initIntersection, 30);
+}
+
+function toggleCheck(id) {
+  checkState[id] = !checkState[id];
+  localStorage.setItem("mcb_checks", JSON.stringify(checkState));
+  renderChecklist();
+}
+
+function addSupervisor() {
+  const name    = document.getElementById("supName").value.trim();
+  const company = document.getElementById("supCompany").value.trim();
+  const track   = document.getElementById("supTrack").value.trim();
+  const status  = document.getElementById("supStatus").value;
+  if (!name || !track) { toast("Rellena nombre y track"); return; }
+  const s = { id: Date.now(), name, company, track, status, date: new Date().toLocaleDateString("es-ES") };
+  supervisors.unshift(s);
+  localStorage.setItem("mcb_sups", JSON.stringify(supervisors));
+  document.getElementById("supName").value = "";
+  document.getElementById("supCompany").value = "";
+  document.getElementById("supTrack").value = "";
+  renderSupervisors();
+  toast("Supervisor registrado ✓");
+}
+
+function deleteSupervisor(id) {
+  supervisors = supervisors.filter(s => s.id !== id);
+  localStorage.setItem("mcb_sups", JSON.stringify(supervisors));
+  renderSupervisors();
+  toast("Eliminado");
+}
+
+function renderSupervisors() {
+  const list = document.getElementById("supList");
+  if (!supervisors.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">⟴</div><div class="empty-text">SIN SUPERVISORES AÚN</div></div>`;
+    return;
+  }
+  list.innerHTML = supervisors.map(s => `
+    <div class="sup-item">
+      <div class="sup-icon">🎬</div>
+      <div class="sup-info">
+        <div class="sup-name">${s.name}${s.company ? " · " + s.company : ""}</div>
+        <div class="sup-meta">${s.track} · ${s.date}</div>
+      </div>
+      <span class="status-badge ${s.status}">${s.status.toUpperCase()}</span>
+      <button class="del-btn" onclick="deleteSupervisor(${s.id})">×</button>
+    </div>`).join("");
+}
+
+// ══════════════════════════════════════════════
+//  COMUNIDADES TAB
+// ══════════════════════════════════════════════
+function renderCommunities() {
+  const mkCard = (c, type) => `
+    <div class="comm-card fade">
+      <div class="comm-top">
+        <div class="comm-icon ${type}">${type==="discord"?"💬":type==="reddit"?"🟠":"📝"}</div>
+        <div>
+          <div class="comm-name">${c.name}</div>
+          <div class="comm-type">${type.toUpperCase()}</div>
+        </div>
+      </div>
+      <div class="comm-desc">${c.desc}</div>
+      <div class="comm-tags">${c.tags.map(t => `<span class="comm-tag">${t}</span>`).join("")}</div>
+      <a class="comm-link" onclick="openLink(event,'${c.url}')">UNIRSE →</a>
+    </div>`;
+
+  document.getElementById("discordList").innerHTML = COMMUNITIES.discord.map(c => mkCard(c,"discord")).join("");
+  document.getElementById("redditList").innerHTML  = COMMUNITIES.reddit.map(c => mkCard(c,"reddit")).join("");
+  document.getElementById("blogList").innerHTML    = COMMUNITIES.blog.map(c => mkCard(c,"blog")).join("");
+}
+
+// ══════════════════════════════════════════════
+//  EMAIL TAB
+// ══════════════════════════════════════════════
+function adjustSubs(delta) {
+  subCount = Math.max(0, subCount + delta);
+  saveAndShowSubs();
+}
+function setSubs() {
+  const v = parseInt(document.getElementById("subInput").value);
+  if (!isNaN(v) && v >= 0) { subCount = v; saveAndShowSubs(); document.getElementById("subInput").value = ""; toast("Contador actualizado ✓"); }
+}
+function saveAndShowSubs() {
+  localStorage.setItem("mcb_subs", subCount);
+  document.getElementById("subCount").textContent = subCount.toLocaleString("es-ES");
+}
+function copyTemplate() {
+  navigator.clipboard.writeText(document.getElementById("emailTemplate").textContent).then(() => toast("Plantilla copiada ✓"));
+}
+function copyTemplate2() {
+  navigator.clipboard.writeText(document.getElementById("emailTemplate2").textContent).then(() => toast("Plantilla copiada ✓"));
+}
+
+// ══════════════════════════════════════════════
+//  COLABS TAB
+// ══════════════════════════════════════════════
+function renderColabs() {
+  const list = document.getElementById("colabList");
+  const filtered = activeNiche === "all" ? colabs : colabs.filter(c => c.niche === activeNiche);
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">⬡</div><div class="empty-text">SIN CREADORES EN ESTE NICHO</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c => `
+    <div class="colab-card fade">
+      <div class="colab-top">
+        <div class="colab-name">${c.handle}</div>
+        <div class="colab-niche ${c.niche}">${c.niche.toUpperCase()}</div>
+      </div>
+      <div class="colab-meta">${c.platform}${c.followers ? " · " + c.followers + " seguidores" : ""}</div>
+      <div class="colab-footer">
+        <a class="colab-link" onclick="openLink(event,'${c.link||'#'}')">VER PERFIL →</a>
+        <button class="colab-del" onclick="deleteColab('${c.id}')">×</button>
+      </div>
+    </div>`).join("");
+  setTimeout(initIntersection, 30);
+}
+
+function addColab() {
+  const handle    = document.getElementById("colHandle").value.trim();
+  const niche     = document.getElementById("colNiche").value;
+  const platform  = document.getElementById("colPlatform").value;
+  const followers = document.getElementById("colFollowers").value.trim();
+  const link      = document.getElementById("colLink").value.trim();
+  if (!handle || !niche) { toast("Rellena @handle y nicho"); return; }
+  const c = { id: "c" + Date.now(), handle, niche, platform, followers, link };
+  colabs.unshift(c);
+  localStorage.setItem("mcb_colabs", JSON.stringify(colabs));
+  document.getElementById("colHandle").value = "";
+  document.getElementById("colFollowers").value = "";
+  document.getElementById("colLink").value = "";
+  renderColabs();
+  toast("Creador añadido ✓");
+}
+
+function deleteColab(id) {
+  colabs = colabs.filter(c => c.id !== id);
+  localStorage.setItem("mcb_colabs", JSON.stringify(colabs));
+  renderColabs();
+  toast("Eliminado");
+}
+
+function initNicheFilter() {
+  document.querySelectorAll(".niche-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".niche-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeNiche = btn.dataset.niche;
+      renderColabs();
+    });
+  });
+}
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function openLink(e, url) {
+  e.preventDefault();
+  if (!url || url === "#") { toast("Link no disponible"); return; }
+  const tg = window.Telegram?.WebApp;
+  if (tg) tg.openLink(url);
+  else window.open(url, "_blank");
+}
+
+function goBack() {
+  const tg = window.Telegram?.WebApp;
+  if (history.length > 1) history.back();
+  else if (tg) tg.close();
+  else window.location.href = "index.html";
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+function initIntersection() {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("in"); });
+  }, { threshold: 0.05 });
+  document.querySelectorAll(".fade:not(.in)").forEach(el => obs.observe(el));
+}
+
+// ══════════════════════════════════════════════
+//  WEBGL SHADER
+// ══════════════════════════════════════════════
+function initShader() {
+  const canvas = document.getElementById("shaderCanvas");
+  const gl = canvas.getContext("webgl");
+  if (!gl) return;
+  const resize = () => { canvas.width = window.innerWidth; canvas.height = 172; gl.viewport(0,0,canvas.width,canvas.height); };
+  resize(); window.addEventListener("resize", resize);
+  const mk = (type, src) => { const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, mk(gl.VERTEX_SHADER, `attribute vec2 a;void main(){gl_Position=vec4(a,0,1);}`));
+  gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    uniform float t; uniform vec2 r;
+    vec3 pal(float x){return vec3(0.04,0.02,0.02)+vec3(0.4,0.2,0.1)*cos(6.28*(vec3(0.9,.6,.4)*x+vec3(0.1,.2,.4)));}
+    void main(){
+      vec2 uv=(gl_FragCoord.xy*2.-r)/min(r.x,r.y),uv0=uv;
+      vec3 col=vec3(0.);
+      for(float i=0.;i<4.;i++){
+        uv=fract(uv*1.5)-.5;
+        float d=length(uv)*exp(-length(uv0));
+        vec3 c=pal(length(uv0)+i*.4+t*.18);
+        d=sin(d*8.+t)*.125; d=abs(d); d=pow(.01/d,1.1);
+        col+=c*d;
+      }
+      gl_FragColor=vec4(col*.45,1.);
+    }`));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog,"a");
+  gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  const tL = gl.getUniformLocation(prog,"t"), rL = gl.getUniformLocation(prog,"r"), t0 = Date.now();
+  (function tick() {
+    gl.uniform1f(tL,(Date.now()-t0)/1000); gl.uniform2f(rL,canvas.width,canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4); requestAnimationFrame(tick);
+  })();
+}
+
+// ══════════════════════════════════════════════
+//  WAVE
+// ══════════════════════════════════════════════
+function initWave() {
+  const canvas = document.getElementById("waveCanvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = canvas.offsetWidth || 390; canvas.height = 24;
+  const W = canvas.width, H = canvas.height, bars = 26;
+  let t = 0;
+  (function draw() {
+    t += 0.04; ctx.clearRect(0,0,W,H);
+    const g = ctx.createLinearGradient(0,0,W,0);
+    g.addColorStop(0,"#FFB830"); g.addColorStop(0.5,"#7C3AFF"); g.addColorStop(1,"#FF2D78");
+    ctx.fillStyle = g;
+    for (let i=0; i<bars; i++) {
+      const x=(i/bars)*W, bw=(W/bars)-1.5;
+      const v=Math.sin(t+i*.45)*.5+Math.sin(t*1.3+i*.3)*.3+Math.sin(t*.6+i*.7)*.2;
+      const h=Math.abs(v)*H*.82+3;
+      ctx.fillRect(x,(H-h)/2,bw,h);
+    }
+    requestAnimationFrame(draw);
+  })();
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  initShader();
+  initWave();
+  initTabs();
+  initGenreFilter();
+  initNicheFilter();
+
+  // Render all panels
+  renderCurators();
+  renderPitches();
+  renderChecklist();
+  renderSupervisors();
+  renderCommunities();
+  renderColabs();
+
+  // Email counter
+  document.getElementById("subCount").textContent = subCount.toLocaleString("es-ES");
+
+  setTimeout(initIntersection, 100);
+});
+</script>
+</body>
+</html>

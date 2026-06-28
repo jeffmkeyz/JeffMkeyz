@@ -129,17 +129,34 @@ canvas#chart {
 .tooltip { display:none !important; }
 /* CHART INFOBAR — fixed info row above canvas */
 .chart-infobar {
-  display:flex; align-items:center; gap:10px;
-  padding:7px 14px; margin:0 16px 6px;
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px;
+  padding:8px 14px; margin:0 16px 6px;
   background:var(--panel); border-radius:10px;
-  border:1px solid var(--border); min-height:36px;
-  transition:all 0.15s;
+  border:1px solid var(--border); min-height:42px;
+  transition:all 0.15s; position:relative;
 }
-.cib-date { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); flex-shrink:0; }
-.cib-val  { font-family:'Space Mono',monospace; font-size:17px; font-weight:900; }
-.cib-chg  { font-size:11px; font-weight:700; }
-.cib-earn { font-size:10px; color:var(--green); font-weight:700; margin-left:auto; flex-shrink:0; }
-.cib-placeholder { font-size:11px; color:var(--muted); }
+.cib-left  { display:flex; align-items:center; gap:8px; justify-self:start; min-width:0; overflow:hidden; }
+.cib-right { justify-self:end; }
+.cib-date { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); flex-shrink:0; white-space:nowrap; }
+.cib-val  { font-family:'Space Mono',monospace; font-size:17px; font-weight:900; white-space:nowrap; }
+.cib-chg  { font-size:11px; font-weight:700; white-space:nowrap; }
+.cib-center { justify-self:center; display:flex; align-items:center; }
+.cib-earn {
+  font-family:'Space Mono',monospace; font-size:15px; font-weight:900; color:#0d0f1a;
+  background:linear-gradient(135deg,#00F5A0,#00d9c0);
+  padding:6px 16px; border-radius:100px; white-space:nowrap;
+  box-shadow:0 0 0 0 rgba(0,245,160,0.55);
+  opacity:0; transform:scale(0.7);
+  transition:opacity 0.25s ease, transform 0.25s ease;
+}
+.cib-earn.show  { opacity:1; transform:scale(1); }
+.cib-earn.pulse { animation:cibPulse 0.6s ease-out; }
+@keyframes cibPulse {
+  0%   { transform:scale(0.82); box-shadow:0 0 0 0 rgba(0,245,160,0.65); }
+  45%  { transform:scale(1.16); box-shadow:0 0 18px 5px rgba(0,245,160,0.5); }
+  100% { transform:scale(1);    box-shadow:0 0 0 0 rgba(0,245,160,0); }
+}
+.cib-placeholder { font-size:11px; color:var(--muted); grid-column:1/-1; justify-self:center; }
 /* SMA LEGEND — HTML element below scrollbar */
 .sma-legend {
   display:flex; align-items:center; gap:12px;
@@ -495,11 +512,16 @@ canvas#rsi-chart {
 
 <!-- Chart info bar — replaces floating tooltip -->
 <div class="chart-infobar" id="chart-infobar">
-  <span class="cib-date" id="cib-date"></span>
-  <span class="cib-val"  id="cib-val"></span>
-  <span class="cib-chg"  id="cib-chg"></span>
-  <span class="cib-earn" id="cib-earn"></span>
-  <span class="cib-placeholder" id="cib-ph" style="color:var(--muted);font-size:11px;margin:0 auto">Toca o desliza para explorar</span>
+  <div class="cib-left">
+    <span class="cib-date" id="cib-date"></span>
+    <span class="cib-val"  id="cib-val"></span>
+    <span class="cib-chg"  id="cib-chg"></span>
+  </div>
+  <div class="cib-center">
+    <span class="cib-earn" id="cib-earn"></span>
+  </div>
+  <div class="cib-right"></div>
+  <span class="cib-placeholder" id="cib-ph">Toca o desliza para explorar</span>
 </div>
 
 <div class="chart-section">
@@ -848,9 +870,9 @@ function drawRSI(data) {
 
   // Grid lines: 70, 50, 30
   const gridLevels = [
-    { v:70, color:"rgba(255,77,77,0.3)",   label:"70" },
-    { v:50, color:"rgba(200,200,200,0.15)", label:"50" },
-    { v:30, color:"rgba(80,220,160,0.3)",  label:"30" },
+    { v:70, color:"rgba(255,77,77,0.3)",   textColor:"#ff8080", label:"70" },
+    { v:50, color:"rgba(200,200,200,0.15)", textColor:"#9aa0c0", label:"50" },
+    { v:30, color:"rgba(80,220,160,0.3)",  textColor:"#5dffc0", label:"30" },
   ];
   gridLevels.forEach(g => {
     const py = toY(g.v);
@@ -858,9 +880,19 @@ function drawRSI(data) {
     try{ctx.setLineDash([4*dpr,4*dpr]);}catch(e){}
     ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W-pad.r, py); ctx.stroke();
     try{ctx.setLineDash([]);}catch(e){}
-    ctx.fillStyle = g.color; ctx.font = `${7.5*dpr}px -apple-system`;
+    ctx.font = `bold ${9.5*dpr}px -apple-system`;
     ctx.textAlign = "right";
-    ctx.fillText(g.label, W - pad.r + 46*dpr, py + 3*dpr);
+    const ltx = W - pad.r + 46*dpr;
+    const ltw = ctx.measureText(g.label).width;
+    ctx.save();
+    ctx.globalAlpha = 0.78; ctx.fillStyle = "#0d0f1a";
+    ctx.beginPath();
+    ctx.roundRect?.(ltx-ltw-6*dpr, py-6*dpr, ltw+10*dpr, 13*dpr, 3*dpr)
+      || ctx.rect(ltx-ltw-6*dpr, py-6*dpr, ltw+10*dpr, 13*dpr);
+    ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = g.textColor;
+    ctx.fillText(g.label, ltx, py + 3*dpr);
+    ctx.restore();
   });
 
   // Overbought fill (above 70)
@@ -1236,6 +1268,16 @@ function fmtMoney(n) {
   if (n>=1000) return "$"+(n/1000).toFixed(1)+"K";
   return "$"+n.toFixed(2);
 }
+function setCibEarn(txt) {
+  const el = document.getElementById("cib-earn");
+  if (!el) return;
+  if (!txt) { el.classList.remove("show","pulse"); el.textContent = ""; return; }
+  el.textContent = txt;
+  el.classList.add("show");
+  el.classList.remove("pulse");
+  void el.offsetWidth; // reflow para reiniciar la animación
+  el.classList.add("pulse");
+}
 function cutoff() {
   const d=new Date(); d.setDate(d.getDate()-currentPeriod);
   return d.toISOString().split("T")[0];
@@ -1400,7 +1442,6 @@ function render() {
     const cibDate = document.getElementById("cib-date");
     const cibVal  = document.getElementById("cib-val");
     const cibChg  = document.getElementById("cib-chg");
-    const cibEarn = document.getElementById("cib-earn");
     if (ph) ph.style.display = "none";
     if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
     if (cibVal)  { cibVal.textContent = fmtNum(lastVal) + " " + m.emoji; cibVal.style.color = m.color; }
@@ -1410,7 +1451,7 @@ function render() {
       cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
       cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
     }
-    if (cibEarn) cibEarn.textContent = "";
+    setCibEarn("");
   }, 50);
 }
 
@@ -1442,8 +1483,19 @@ function drawChart(data) {
     const y=pad.t+(cH/3)*i;
     ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
     if (i<3) {
-      ctx.fillStyle="#4a4f6a"; ctx.font=`${8*dpr}px -apple-system`; ctx.textAlign="right";
-      ctx.fillText(fmtNum(maxV-(maxV/3)*i), W-pad.r-2, y-2);
+      const gTxt = fmtNum(maxV-(maxV/3)*i);
+      ctx.font = `bold ${10*dpr}px -apple-system`; ctx.textAlign = "right";
+      const gtw = ctx.measureText(gTxt).width;
+      const gtx = W - pad.r - 3*dpr;
+      ctx.save();
+      ctx.globalAlpha = 0.72; ctx.fillStyle = "#0d0f1a";
+      ctx.beginPath();
+      ctx.roundRect?.(gtx-gtw-8*dpr, y-12*dpr, gtw+10*dpr, 14*dpr, 3*dpr)
+        || ctx.rect(gtx-gtw-8*dpr, y-12*dpr, gtw+10*dpr, 14*dpr);
+      ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = "#c8cde8";
+      ctx.fillText(gTxt, gtx, y-2*dpr);
+      ctx.restore();
     }
   });
 
@@ -1670,7 +1722,7 @@ function drawChart(data) {
     // Anti-collision: track used label Y positions
     const usedLabelY = [];
     function safeY(py) {
-      const gap = 11*dpr;
+      const gap = 14*dpr;
       let y = py - 3*dpr;
       let tries = 0;
       while (tries++ < 8) {
@@ -1693,20 +1745,20 @@ function drawChart(data) {
       // Label on RIGHT side — pill background for readability
       const ly = safeY(py);
       const txt = labelTxt + " " + fmtNum(labelVal);
-      ctx.font = `bold ${7.5*dpr}px -apple-system`;
+      ctx.font = `bold ${9.5*dpr}px -apple-system`;
       ctx.textAlign = "right";
       const tw = ctx.measureText(txt).width;
       const tx = W - pad.r - 4*dpr;
       // Background pill
-      ctx.globalAlpha = 0.75;
+      ctx.globalAlpha = 0.85;
       ctx.fillStyle = "#0d0f1a";
-      const pillX = tx - tw - 4*dpr;
+      const pillX = tx - tw - 5*dpr;
       ctx.beginPath();
-      ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
-        || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
+      ctx.roundRect?.(pillX, ly-9*dpr, tw+10*dpr, 13*dpr, 4*dpr)
+        || ctx.rect(pillX, ly-9*dpr, tw+10*dpr, 13*dpr);
       ctx.fill();
       // Text
-      ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = 1;
       ctx.fillStyle = color;
       ctx.fillText(txt, tx, ly);
       ctx.restore();
@@ -1741,16 +1793,16 @@ function drawChart(data) {
         ctx.beginPath(); ctx.moveTo(pad.l, pyR); ctx.lineTo(W-pad.r, pyR); ctx.stroke();
         // Label — right side with pill
         const txt = resLbl + " " + fmtNum(resV);
-        ctx.font = `bold ${7.5*dpr}px -apple-system`;
+        ctx.font = `bold ${9.5*dpr}px -apple-system`;
         ctx.textAlign = "right";
         const tw = ctx.measureText(txt).width;
         const tx = W - pad.r - 4*dpr;
         const ly = safeY(pyR);
-        ctx.globalAlpha = 0.75; ctx.fillStyle = "#0d0f1a";
-        const pillX = tx - tw - 4*dpr;
+        ctx.globalAlpha = 0.85; ctx.fillStyle = "#0d0f1a";
+        const pillX = tx - tw - 5*dpr;
         ctx.beginPath();
-        ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
-          || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
+        ctx.roundRect?.(pillX, ly-9*dpr, tw+10*dpr, 13*dpr, 4*dpr)
+          || ctx.rect(pillX, ly-9*dpr, tw+10*dpr, 13*dpr);
         ctx.fill();
         ctx.globalAlpha = 1; ctx.fillStyle = "#FF9F43";
         ctx.fillText(txt, tx, ly);
@@ -1767,17 +1819,17 @@ function drawChart(data) {
       // Label at RIGHT end of trend line (away from SMA legend top-left)
       const slopePct = intercept>0?Math.round((slope/intercept)*100*n):0;
       const trendTxt = "TREND "+(slopePct>=0?"▲":"▼")+Math.abs(slopePct)+"%";
-      ctx.font=`bold ${8*dpr}px -apple-system`;
+      ctx.font=`bold ${9.5*dpr}px -apple-system`;
       const ttw = ctx.measureText(trendTxt).width;
       const tlx = W - pad.r - ttw - 6*dpr;
       const tly = Math.max(pad.t+10*dpr, Math.min(H-pad.b-4*dpr, py1 - 5*dpr));
       // Background pill
-      ctx.globalAlpha=0.7; ctx.fillStyle="#0d0f1a";
+      ctx.globalAlpha=0.85; ctx.fillStyle="#0d0f1a";
       ctx.beginPath();
-      ctx.roundRect?.(tlx-3*dpr, tly-7*dpr, ttw+8*dpr, 10*dpr, 3*dpr)
-        || ctx.rect(tlx-3*dpr, tly-7*dpr, ttw+8*dpr, 10*dpr);
+      ctx.roundRect?.(tlx-4*dpr, tly-9*dpr, ttw+10*dpr, 13*dpr, 4*dpr)
+        || ctx.rect(tlx-4*dpr, tly-9*dpr, ttw+10*dpr, 13*dpr);
       ctx.fill();
-      ctx.globalAlpha=0.95; ctx.fillStyle="#b06afc";
+      ctx.globalAlpha=1; ctx.fillStyle="#b06afc";
       ctx.textAlign="left"; ctx.fillText(trendTxt, tlx, tly);
       ctx.restore();
     }
@@ -1827,7 +1879,7 @@ function drawChart(data) {
           const isMid       = lv.r === 0.382 || lv.r === 0.5 || lv.r === 0.786 || lv.r === 1.272 || lv.r === 2.618;
           const isTarget    = lv.r === 1.618;
           const lineW       = isGolden ? 1.8*dpr : isMid ? 1*dpr : 0.7*dpr;
-          const lineAlphaF  = isGolden ? 0.85 : isMid ? 0.45 : 0.25;
+          const lineAlphaF  = isGolden ? 0.85 : isMid ? 0.55 : 0.35;
 
           // Line — target 161.8% dashed
           ctx.globalAlpha  = lineAlphaF;
@@ -1848,55 +1900,59 @@ function drawChart(data) {
           // RIGHT label — only the percentage, short
           const ly   = safeY(py);
           const pctTxt = lv.label + (isGolden ? " φ" : "");
-          ctx.font    = isGolden ? `bold ${8*dpr}px -apple-system` : `${7*dpr}px -apple-system`;
+          ctx.font    = isGolden ? `bold ${10.5*dpr}px -apple-system` : isMid ? `bold ${9*dpr}px -apple-system` : `bold ${8*dpr}px -apple-system`;
           ctx.textAlign = "right";
           const tw    = ctx.measureText(pctTxt).width;
           const tx    = W - pad.r - 4*dpr;
 
           // Pill background — right
-          ctx.globalAlpha = isGolden ? 0.88 : 0.6;
+          ctx.globalAlpha = isGolden ? 0.92 : isMid ? 0.85 : 0.75;
           ctx.fillStyle   = "#0d0f1a";
-          const pillX = tx - tw - 4*dpr;
+          const pillX = tx - tw - 5*dpr;
           ctx.beginPath();
-          ctx.roundRect?.(pillX, ly-7*dpr, tw+8*dpr, 10*dpr, 3*dpr)
-            || ctx.rect(pillX, ly-7*dpr, tw+8*dpr, 10*dpr);
+          ctx.roundRect?.(pillX, ly-9*dpr, tw+10*dpr, 14*dpr, 4*dpr)
+            || ctx.rect(pillX, ly-9*dpr, tw+10*dpr, 14*dpr);
           ctx.fill();
 
           // Percentage text — right
-          ctx.globalAlpha = isGolden ? 1 : isMid ? 0.7 : 0.45;
+          ctx.globalAlpha = isGolden ? 1 : isMid ? 0.95 : 0.85;
           ctx.fillStyle   = lv.color;
           ctx.fillText(pctTxt, tx, ly);
 
           // LEFT label — value in oyentes/streams, only for golden + mid levels
           if (isGolden || isMid) {
             const valTxt = fmtNum(lv.value);
-            ctx.font = isGolden ? `bold ${7.5*dpr}px -apple-system` : `${7*dpr}px -apple-system`;
+            ctx.font = isGolden ? `bold ${9.5*dpr}px -apple-system` : `bold ${8.5*dpr}px -apple-system`;
             ctx.textAlign = "left";
             const vtw = ctx.measureText(valTxt).width;
             const vtx = pad.l + (isGolden ? 14*dpr : 6*dpr);
 
             // Pill background — left
-            ctx.globalAlpha = isGolden ? 0.8 : 0.5;
+            ctx.globalAlpha = isGolden ? 0.9 : 0.8;
             ctx.fillStyle   = "#0d0f1a";
             ctx.beginPath();
-            ctx.roundRect?.(vtx-2*dpr, ly-7*dpr, vtw+6*dpr, 10*dpr, 3*dpr)
-              || ctx.rect(vtx-2*dpr, ly-7*dpr, vtw+6*dpr, 10*dpr);
+            ctx.roundRect?.(vtx-3*dpr, ly-9*dpr, vtw+8*dpr, 14*dpr, 4*dpr)
+              || ctx.rect(vtx-3*dpr, ly-9*dpr, vtw+8*dpr, 14*dpr);
             ctx.fill();
 
-            ctx.globalAlpha = isGolden ? 0.9 : 0.55;
-            ctx.fillStyle   = isGolden ? lv.color : "rgba(200,200,220,0.8)";
+            ctx.globalAlpha = isGolden ? 1 : 0.9;
+            ctx.fillStyle   = isGolden ? lv.color : "rgba(220,222,240,0.95)";
             ctx.fillText(valTxt, vtx, ly);
           }
 
           // TARGET label for 161.8%
           if (isTarget) {
             const tgtTxt = "🎯 OBJETIVO";
-            ctx.font = `bold ${7.5*dpr}px -apple-system`;
+            ctx.font = `bold ${9.5*dpr}px -apple-system`;
             ctx.textAlign = "left";
-            const ttx = W/2 - ctx.measureText(tgtTxt).width/2;
-            ctx.globalAlpha = 0.7; ctx.fillStyle = "#0d0f1a";
-            ctx.fillRect(ttx-4*dpr, ly-7*dpr, ctx.measureText(tgtTxt).width+10*dpr, 10*dpr);
-            ctx.globalAlpha = 0.85; ctx.fillStyle = lv.color;
+            const tgw = ctx.measureText(tgtTxt).width;
+            const ttx = W/2 - tgw/2;
+            ctx.globalAlpha = 0.85; ctx.fillStyle = "#0d0f1a";
+            ctx.beginPath();
+            ctx.roundRect?.(ttx-5*dpr, ly-9*dpr, tgw+12*dpr, 14*dpr, 4*dpr)
+              || ctx.fillRect(ttx-5*dpr, ly-9*dpr, tgw+12*dpr, 14*dpr);
+            ctx.fill();
+            ctx.globalAlpha = 1; ctx.fillStyle = lv.color;
             ctx.fillText(tgtTxt, ttx, ly);
           }
         });
@@ -2022,7 +2078,6 @@ function setupTooltip() {
     const cibDate = document.getElementById("cib-date");
     const cibVal  = document.getElementById("cib-val");
     const cibChg  = document.getElementById("cib-chg");
-    const cibEarn = document.getElementById("cib-earn");
     if (ph) ph.style.display = "none";
     if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
     if (cibVal)  { cibVal.textContent = fmtNum(val) + " " + m.emoji; cibVal.style.color = m.color; }
@@ -2035,7 +2090,7 @@ function setupTooltip() {
         cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
       } else { cibChg.textContent = ""; }
     }
-    if (cibEarn) cibEarn.textContent = rate > 0 ? "💰 " + fmtMoney(val*rate) : "";
+    setCibEarn(rate > 0 ? "💰 " + fmtMoney(val*rate) : "");
 
     // Crosshair + dot
     const xSec = clientX - secRect.left;
@@ -2064,7 +2119,6 @@ function setupTooltip() {
       const cibDate = document.getElementById("cib-date");
       const cibVal  = document.getElementById("cib-val");
       const cibChg  = document.getElementById("cib-chg");
-      const cibEarn = document.getElementById("cib-earn");
       if (ph) ph.style.display = "none";
       if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
       if (cibVal)  { cibVal.textContent = fmtNum(lastVal) + " " + m.emoji; cibVal.style.color = m.color; }
@@ -2074,7 +2128,7 @@ function setupTooltip() {
         cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
         cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
       }
-      if (cibEarn) cibEarn.textContent = "";
+      setCibEarn("");
     }, 800);
   }
 

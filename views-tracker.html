@@ -1272,11 +1272,16 @@ function setCibEarn(txt) {
   const el = document.getElementById("cib-earn");
   if (!el) return;
   if (!txt) { el.classList.remove("show","pulse"); el.textContent = ""; return; }
+  const wasShown = el.classList.contains("show");
   el.textContent = txt;
-  el.classList.add("show");
-  el.classList.remove("pulse");
-  void el.offsetWidth; // reflow para reiniciar la animación
-  el.classList.add("pulse");
+  if (!wasShown) {
+    // Solo animar la primera vez que aparece (no en cada movimiento del dedo/ratón)
+    el.classList.add("show");
+    el.classList.remove("pulse");
+    void el.offsetWidth; // reflow para reiniciar la animación
+    el.classList.add("pulse");
+  }
+  // Si ya estaba visible, solo se actualiza el texto sin re-disparar el pulso
 }
 function cutoff() {
   const d=new Date(); d.setDate(d.getDate()-currentPeriod);

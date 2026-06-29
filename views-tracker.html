@@ -2070,8 +2070,9 @@ function setupTooltip() {
     const rect    = canvas.getBoundingClientRect();
     const section = canvas.parentElement;
     const secRect = section.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const idx = Math.round(pct * (d.length - 1));
+    const pct    = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const rawIdx = pct * (d.length - 1);          // posición continua (sin redondear) — para deslizar el punto
+    const idx    = Math.round(rawIdx);             // dato real más cercano — para la información mostrada
     const entry = d[idx]; const val = v[idx];
     const m    = canvas._m || METRICS[0];
     const plat = PLATFORMS.find(p => p.id===selPlatform);
@@ -2097,13 +2098,21 @@ function setupTooltip() {
     }
     setCibEarn(rate > 0 ? "💰 " + fmtMoney(val*rate) : "");
 
-    // Crosshair + dot
+    // Crosshair: sigue el dedo de forma continua
     const xSec = clientX - secRect.left;
     crosshair.style.left = xSec + "px"; crosshair.style.display = "block";
+
+    // Dot: se desliza suavemente sobre la curva real (interpolado entre los 2 puntos más cercanos)
     const pts = canvas._pts;
-    if (dot && pts && pts[idx]) {
-      dot.style.left       = (rect.left - secRect.left + pts[idx].x) + "px";
-      dot.style.top        = (rect.top  - secRect.top  + pts[idx].y) + "px";
+    if (dot && pts && pts.length) {
+      const i0 = Math.max(0, Math.min(pts.length-1, Math.floor(rawIdx)));
+      const i1 = Math.min(pts.length-1, i0+1);
+      const frac = rawIdx - i0;
+      const p0 = pts[i0], p1 = pts[i1] || p0;
+      const dx = p0.x + (p1.x - p0.x) * frac;
+      const dy = p0.y + (p1.y - p0.y) * frac;
+      dot.style.left       = (rect.left - secRect.left + dx) + "px";
+      dot.style.top        = (rect.top  - secRect.top  + dy) + "px";
       dot.style.color      = m.color;
       dot.style.background = m.color;
       dot.style.display    = "block";
@@ -2142,7 +2151,7 @@ function setupTooltip() {
   let pinch0 = null;           // {dist, zs, ze} at pinch start
   let panLast = 0, panAcc = 0;
   let lastTap = 0;
-  let gesture = "none";        // "none" | "pan" | "pinch" | "tap"
+  let gesture = "none";        // "none" | "pinch"
 
   canvas.addEventListener("touchstart", e => {
     e.preventDefault();
@@ -2193,29 +2202,10 @@ function setupTooltip() {
       clampZoom(Math.round(anchor - midPct * newSpan), Math.round(anchor - midPct * newSpan) + newSpan);
 
     } else if (gesture!=="pinch" && t1 && !t2) {
-      const dx = t1.x - panLast;
-      if (Math.abs(dx) > 3) gesture = "pan";
-
-      if (gesture === "pan") {
-        const rect   = canvas.getBoundingClientRect();
-        const full   = getFiltered().length - 1;
-        const curEnd = zoomEnd===Infinity ? full : zoomEnd;
-        const span   = Math.max(1, curEnd - zoomStart);
-        panAcc += -dx / (rect.width / span);
-        const shift = Math.trunc(panAcc);
-        panAcc -= shift;
-        if (shift !== 0) {
-          let ns = zoomStart + shift, ne = curEnd + shift;
-          if (ns < 0)    { ne -= ns; ns = 0; }
-          if (ne > full) { ns -= ne - full; ne = full; }
-          zoomStart = Math.max(0, ns);
-          zoomEnd   = Math.min(full, ne);
-          render();
-        }
-        panLast = t1.x;
-      } else {
-        showTooltip(t1.x);
-      }
+      // Un dedo: siempre "scrub" (mostrar info), de forma continua y sin saltos.
+      // El paneo (desplazar la vista cuando hay zoom) se hace con la barra de scroll inferior.
+      showTooltip(t1.x);
+      panLast = t1.x;
     }
   }, {passive:false});
 

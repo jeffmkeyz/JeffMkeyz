@@ -123,8 +123,8 @@ canvas#chart {
 .tt-date { font-size:10px; color:var(--muted); }
 .tt-val  { font-size:13px; font-weight:900; }
 .tt-earn { font-size:10px; color:var(--green); font-weight:700; }
-.crosshair { position:absolute; top:8px; bottom:6px; width:1px; background:rgba(245,197,24,0.3); pointer-events:none; display:none; }
-.chart-dot { position:absolute; width:9px; height:9px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 10px currentColor; z-index:10; }
+.crosshair { position:absolute; top:8px; bottom:6px; width:1px; background:rgba(245,197,24,0.3); pointer-events:none; display:none; will-change:left; }
+.chart-dot { position:absolute; width:9px; height:9px; border-radius:50%; pointer-events:none; display:none; transform:translate(-50%,-50%); border:2px solid #fff; box-shadow:0 0 10px currentColor; z-index:10; will-change:left,top; }
 /* FLOATING TOOLTIP — replaced by infobar, kept hidden */
 .tooltip { display:none !important; }
 /* CHART INFOBAR — fixed info row above canvas */
@@ -133,7 +133,7 @@ canvas#chart {
   padding:8px 14px; margin:0 16px 6px;
   background:var(--panel); border-radius:10px;
   border:1px solid var(--border); min-height:48px;
-  transition:all 0.15s; position:relative; overflow:hidden;
+  transition:border-color 0.15s, background 0.15s; position:relative; overflow:hidden;
 }
 .cib-left  { display:flex; align-items:center; gap:8px; justify-self:start; min-width:0; overflow:hidden; }
 .cib-right { justify-self:end; }
@@ -2049,6 +2049,34 @@ function setupTooltip() {
   const dot       = document.getElementById("chart-dot");
   const MIN_PTS   = 3;
 
+  // ── Cached DOM refs (evita document.getElementById en cada movimiento) ──
+  const phEl      = document.getElementById("cib-ph");
+  const cibDateEl = document.getElementById("cib-date");
+  const cibValEl  = document.getElementById("cib-val");
+  const cibChgEl  = document.getElementById("cib-chg");
+
+  // ── Cached layout rects (evita forced reflow en cada movimiento) ──
+  let cachedRect = null, cachedSecRect = null;
+  function refreshRects() {
+    cachedRect    = canvas.getBoundingClientRect();
+    cachedSecRect = canvas.parentElement.getBoundingClientRect();
+  }
+  window.addEventListener("resize", refreshRects);
+
+  // ── rAF batching: agrupa varios touchmove en una sola actualización por fotograma ──
+  let pendingX = null, rafScheduled = false;
+  function scheduleShowTooltip(x) {
+    pendingX = x;
+    if (!rafScheduled) {
+      rafScheduled = true;
+      requestAnimationFrame(() => {
+        rafScheduled = false;
+        if (pendingX !== null) showTooltip(pendingX);
+      });
+    }
+  }
+  let lastHapticIdx = null;
+
   // ── Helpers ──
   function ptDist(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
   function ptMid(a, b)  { return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
@@ -2067,9 +2095,9 @@ function setupTooltip() {
   function showTooltip(clientX) {
     const d = canvas._data; const v = canvas._vals;
     if (!d?.length) return;
-    const rect    = canvas.getBoundingClientRect();
-    const section = canvas.parentElement;
-    const secRect = section.getBoundingClientRect();
+    if (!cachedRect) refreshRects();
+    const rect    = cachedRect;
+    const secRect = cachedSecRect;
     const pct    = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const rawIdx = pct * (d.length - 1);          // posición continua (sin redondear) — para deslizar el punto
     const idx    = Math.round(rawIdx);             // dato real más cercano — para la información mostrada
@@ -2079,22 +2107,18 @@ function setupTooltip() {
     const rate = currentMetric==="streams" && plat ? plat.rate : 0;
     const dt   = new Date(entry.date + "T00:00:00");
 
-    // Update infobar
-    const ph = document.getElementById("cib-ph");
-    const cibDate = document.getElementById("cib-date");
-    const cibVal  = document.getElementById("cib-val");
-    const cibChg  = document.getElementById("cib-chg");
-    if (ph) ph.style.display = "none";
-    if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
-    if (cibVal)  { cibVal.textContent = fmtNum(val) + " " + m.emoji; cibVal.style.color = m.color; }
+    // Update infobar (usando refs cacheadas — sin getElementById en cada movimiento)
+    if (phEl) phEl.style.display = "none";
+    if (cibDateEl) cibDateEl.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+    if (cibValEl)  { cibValEl.textContent = fmtNum(val) + " " + m.emoji; cibValEl.style.color = m.color; }
     // Change vs previous
-    if (cibChg) {
+    if (cibChgEl) {
       if (idx > 0 && v[idx-1]) {
         const diff = val - v[idx-1];
         const pct2 = v[idx-1] > 0 ? Math.round((diff/v[idx-1])*100) : 0;
-        cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
-        cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
-      } else { cibChg.textContent = ""; }
+        cibChgEl.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
+        cibChgEl.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
+      } else { cibChgEl.textContent = ""; }
     }
     setCibEarn(rate > 0 ? "💰 " + fmtMoney(val*rate) : "");
 
@@ -2117,30 +2141,28 @@ function setupTooltip() {
       dot.style.background = m.color;
       dot.style.display    = "block";
     }
-    if (tg) tg.HapticFeedback?.selectionChanged();
+    // Haptic solo cuando cambia el dato real (no en cada pixel) — evita stutter
+    if (tg && idx !== lastHapticIdx) { tg.HapticFeedback?.selectionChanged(); lastHapticIdx = idx; }
   }
   function hideTooltip() {
     setTimeout(() => {
       crosshair.style.display = "none";
       if (dot) dot.style.display = "none";
+      lastHapticIdx = null; // reset: el próximo toque siempre vibra
       // Restore infobar to latest data
       const d = canvas._data; const v = canvas._vals;
-      const ph = document.getElementById("cib-ph");
-      if (!d?.length) { if (ph) ph.style.display = ""; return; }
+      if (!d?.length) { if (phEl) phEl.style.display = ""; return; }
       const last = d[d.length-1]; const lastVal = v[v.length-1];
       const m = canvas._m || METRICS[0];
       const dt = new Date(last.date + "T00:00:00");
-      const cibDate = document.getElementById("cib-date");
-      const cibVal  = document.getElementById("cib-val");
-      const cibChg  = document.getElementById("cib-chg");
-      if (ph) ph.style.display = "none";
-      if (cibDate) cibDate.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
-      if (cibVal)  { cibVal.textContent = fmtNum(lastVal) + " " + m.emoji; cibVal.style.color = m.color; }
-      if (cibChg && v.length > 1) {
+      if (phEl) phEl.style.display = "none";
+      if (cibDateEl) cibDateEl.textContent = dt.toLocaleDateString("es-ES",{weekday:"short",day:"numeric",month:"short"});
+      if (cibValEl)  { cibValEl.textContent = fmtNum(lastVal) + " " + m.emoji; cibValEl.style.color = m.color; }
+      if (cibChgEl && v.length > 1) {
         const diff = lastVal - v[v.length-2];
         const pct2 = v[v.length-2] > 0 ? Math.round((diff/v[v.length-2])*100) : 0;
-        cibChg.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
-        cibChg.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
+        cibChgEl.textContent = (diff >= 0 ? "▲" : "▼") + Math.abs(pct2) + "%";
+        cibChgEl.style.color = diff >= 0 ? "var(--green)" : "var(--fire)";
       }
       setCibEarn("");
     }, 800);
@@ -2176,6 +2198,7 @@ function setupTooltip() {
       panLast  = t1.x;
       panAcc   = 0;
       pinch0   = null;
+      refreshRects(); // asegura medidas frescas al empezar a deslizar (por si hubo scroll/resize)
       const now = Date.now();
       if (now - lastTap < 300) { zoomReset(); render(); lastTap = 0; }
       else lastTap = now;
@@ -2203,8 +2226,9 @@ function setupTooltip() {
 
     } else if (gesture!=="pinch" && t1 && !t2) {
       // Un dedo: siempre "scrub" (mostrar info), de forma continua y sin saltos.
+      // Se agrupa por requestAnimationFrame para no hacer más trabajo del que el navegador puede pintar.
       // El paneo (desplazar la vista cuando hay zoom) se hace con la barra de scroll inferior.
-      showTooltip(t1.x);
+      scheduleShowTooltip(t1.x);
       panLast = t1.x;
     }
   }, {passive:false});
@@ -2225,7 +2249,8 @@ function setupTooltip() {
   }, {passive:false});
 
   // ── Mouse ──
-  canvas.addEventListener("mousemove",  e => showTooltip(e.clientX));
+  canvas.addEventListener("mouseenter", refreshRects);
+  canvas.addEventListener("mousemove",  e => scheduleShowTooltip(e.clientX));
   canvas.addEventListener("mouseleave", hideTooltip);
   canvas.addEventListener("wheel", e => {
     e.preventDefault();
